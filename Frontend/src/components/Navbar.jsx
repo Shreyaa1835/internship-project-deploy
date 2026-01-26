@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom'; // IMPORT Link
 
 const Navbar = () => {
   return (
@@ -15,27 +16,24 @@ const Navbar = () => {
 
       {/* Buttons */}
       <div className="flex items-center gap-4 font-medium">
-  
-  <a
-    href="#"
-    className="
-      bg-white hover:bg-gray-100 text-emerald-600 px-4 py-2 rounded-lg font-semibold text-sm border border-emerald-200 shadow-md transition-all transform hover:-translate-y-0.5
-    "
-  >
-    Login
-  </a>
+        <Link
+          to="/login"   // <-- Use Link instead of <a href="#">
+          className="
+            bg-white hover:bg-gray-100 text-emerald-600 px-4 py-2 rounded-lg font-semibold text-sm border border-emerald-200 shadow-md transition-all transform hover:-translate-y-0.5
+          "
+        >
+          Login
+        </Link>
 
-  
-  <a
-    href="#"
-    className="
-      bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-md shadow-emerald-200 transition-all transform hover:-translate-y-0.5
-    "
-  >
-    Signup
-  </a>
-</div>
-
+        <Link
+          to="/signup"   // <-- Link to /signup
+          className="
+            bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-md shadow-emerald-200 transition-all transform hover:-translate-y-0.5
+          "
+        >
+          Signup
+        </Link>
+      </div>
     </nav>
   );
 };
