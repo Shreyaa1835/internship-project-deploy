@@ -2,6 +2,9 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import app from "./firebase/firebaseConfig";
+
+console.log("Firebase App:", app);
 
 function App() {
   return (
