@@ -1,38 +1,65 @@
-import React from 'react';
-import { Link } from 'react-router-dom'; // IMPORT Link
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { getAuth, signOut } from "firebase/auth";
 
 const Navbar = () => {
+  const auth = getAuth();
+  const navigate = useNavigate();
+  const user = auth.currentUser;
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   return (
-    <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-md border-b border-gray-100 px-8 py-4 flex justify-between items-center transition-all">
-      {/* Logo Section */}
+    <nav className="sticky top-0 z-50 bg-white shadow-md border-b px-8 py-4 flex justify-between items-center">
+      {/* Logo */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg">
+        <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
           <span className="text-white font-bold text-xl">A</span>
         </div>
-        <span className="text-emerald-600 font-bold text-2xl tracking-tight hover:text-emerald-500 transition-colors">
+        <span className="text-emerald-600 font-bold text-2xl">
           AI Blog Post Generator
         </span>
       </div>
 
-      {/* Buttons */}
-      <div className="flex items-center gap-4 font-medium">
-        <Link
-          to="/login"   // <-- Use Link instead of <a href="#">
-          className="
-            bg-white hover:bg-gray-100 text-emerald-600 px-4 py-2 rounded-lg font-semibold text-sm border border-emerald-200 shadow-md transition-all transform hover:-translate-y-0.5
-          "
-        >
-          Login
-        </Link>
+      {/* Right Section */}
+      <div className="flex items-center gap-4">
+        {user ? (
+          <>
+            <span className="text-gray-600 text-sm">
+              {user.email}
+            </span>
 
-        <Link
-          to="/signup"   // <-- Link to /signup
-          className="
-            bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-md shadow-emerald-200 transition-all transform hover:-translate-y-0.5
-          "
-        >
-          Signup
-        </Link>
+            <button
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+            >
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <Link
+              to="/login"
+              className="border border-emerald-300 text-emerald-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-50"
+            >
+              Login
+            </Link>
+
+            <Link
+              to="/signup"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+            >
+              Signup
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );

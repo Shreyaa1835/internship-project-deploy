@@ -27,6 +27,10 @@ export default function LoginForm() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log("Login successful:", userCredential.user);
+
+      // --- THE UPDATE: Save email to localStorage for the Dashboard greeting ---
+      localStorage.setItem("userEmail", email); 
+
       setEmail("");
       setPassword("");
       navigate("/dashboard"); // Redirect after login
