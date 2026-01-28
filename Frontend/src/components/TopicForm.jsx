@@ -13,7 +13,8 @@ export default function TopicForm() {
     setError("");
     setMessage("");
 
-    if (!topic || !keywords) {
+    // Input validation
+    if (!topic.trim() || !keywords.trim()) {
       setError("Topic and keywords are required");
       return;
     }
@@ -21,6 +22,7 @@ export default function TopicForm() {
     const auth = getAuth();
     const user = auth.currentUser;
 
+    // Check if user is logged in
     if (!user) {
       setError("User not authenticated");
       return;
@@ -29,29 +31,35 @@ export default function TopicForm() {
     setLoading(true);
 
     try {
+      // Call backend API
       const response = await fetch("http://localhost:8000/api/blog-posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic,
-          keywords,
-          userId: user.uid,
-        }),
-      });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    topic,      // keep topic
+    keywords    // keep keywords
+    // REMOVE userId
+  }),
+});
+
 
       const data = await response.json();
 
+      // Handle errors from backend
       if (!response.ok) {
         throw new Error(data.detail || "Failed to create post");
       }
 
+      // Success message
       setMessage(
         `Post created successfully! ID: ${data.postId} (Outline generation started)`
       );
+
+      // Clear form
       setTopic("");
       setKeywords("");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
