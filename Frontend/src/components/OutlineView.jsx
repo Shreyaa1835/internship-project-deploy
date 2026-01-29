@@ -1,14 +1,41 @@
-import { CheckCircle2, ChevronRight, X } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CheckCircle2, ChevronRight, X, Loader2 } from "lucide-react";
 
-export default function OutlineView({ outline, onApprove, onCancel }) {
+export default function OutlineView({ outline, postId, onCancel }) {
+  const [isApproving, setIsApproving] = useState(false);
+  const navigate = useNavigate();
+  
   const data = typeof outline === "string" ? JSON.parse(outline) : outline;
+
+  const handleApprove = async () => {
+    setIsApproving(true);
+    try {
+      // Call the generation endpoint to start the long-running LLM operation
+      const response = await fetch(`http://localhost:8000/api/blog-posts/${postId}/generate`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        // Navigate to dashboard to watch the progress via status polling
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      console.error("Failed to trigger generation:", err);
+    } finally {
+      setIsApproving(false);
+    }
+  };
 
   return (
     <div className="relative w-full h-full group">
+      {/* GLOW EFFECT: Background breathing glow */}
       <div className="absolute -inset-1.5 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-[3.2rem] blur-xl opacity-20 group-hover:opacity-40 animate-pulse transition duration-1000"></div>
 
+      {/* MAIN CARD: Enhanced glassmorphism */}
       <div className="relative bg-white/90 backdrop-blur-2xl p-8 lg:p-10 rounded-[3rem] shadow-[0_20px_50px_-12px_rgba(16,185,129,0.2)] border border-emerald-100/50 flex flex-col h-full animate-in zoom-in-95 duration-500 overflow-hidden">
         
+        {/* INNER RADIANT GLOW */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-emerald-100/30 to-transparent pointer-events-none" />
 
         {/* Header Section */}
@@ -59,12 +86,22 @@ export default function OutlineView({ outline, onApprove, onCancel }) {
           ))}
         </div>
 
-        {/* Approve Button: Elevated Glow */}
+        {/* Approve Button: Elevated Glow with Loading State */}
         <button
-          onClick={onApprove}
-          className="relative z-10 w-full mt-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-2xl text-xs uppercase tracking-[0.2em] shadow-[0_10px_25px_-5px_rgba(16,185,129,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(16,185,129,0.6)] hover:-translate-y-0.5 active:scale-95 transition-all duration-300"
+          onClick={handleApprove}
+          disabled={isApproving}
+          className={`relative z-10 w-full mt-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-2xl text-xs uppercase tracking-[0.2em] shadow-[0_10px_25px_-5px_rgba(16,185,129,0.4)] transition-all duration-300 flex items-center justify-center gap-2 ${
+            isApproving ? "opacity-80 cursor-not-allowed" : "hover:shadow-[0_15px_30px_-5px_rgba(16,185,129,0.6)] hover:-translate-y-0.5 active:scale-95"
+          }`}
         >
-          Approve & Start Writing
+          {isApproving ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Initialising Writer...
+            </>
+          ) : (
+            "Approve & Start Writing"
+          )}
         </button>
       </div>
     </div>

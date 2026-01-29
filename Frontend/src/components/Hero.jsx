@@ -112,15 +112,16 @@ const Hero = () => {
             <div className="w-3 h-3 rounded-full bg-green-400"></div>
           </div>
 
-          {/* Editor area */}
-          <div className="p-6 flex gap-4 h-[calc(100%-48px)]">
-            <div className="w-1/3 bg-gray-50 rounded-xl p-4 flex flex-col gap-2 shadow-inner">
-              <p className="text-gray-400 text-sm truncate">Enter blog topic</p>
-              <p className="text-gray-400 text-sm truncate">AI suggests headings</p>
-              <p className="text-gray-400 text-sm truncate">Drafting first paragraph</p>
-              <p className="text-gray-400 text-sm truncate">Analyzing tone & grammar</p>
-              <p className="text-gray-400 text-sm truncate">Finalizing output</p>
-            </div>
+          {/* Editor Container */}
+            <div className="p-8 flex gap-6 h-full">
+              {/* Sidebar Steps */}
+              <div className="w-1/3 space-y-4">
+                {['Enter topic', 'Analyze SEO', 'Drafting', 'Tone check', 'Finish'].map((step, i) => (
+                  <div key={i} className={`h-8 rounded-lg flex items-center px-3 text-[11px] font-bold uppercase tracking-wider ${i === currentLineIndex ? 'bg-emerald-50 text-emerald-600' : 'text-slate-300'}`}>
+                    {step}
+                  </div>
+                ))}
+              </div>
 
             <div className="w-2/3 border-l pl-4 space-y-2 overflow-hidden">
               {lines.map((line, idx) => (

@@ -12,7 +12,7 @@ def perform_research_and_outline(post_id: int, topic: str, keywords: str):
     print(f"--- 🚀 DEBUG START: Post {post_id} ---")
     try:
         # Step A: Validate Keys
-        if not os.getenv("GOOGLE_API_KEY") or not os.getenv("TAVILY_API_KEY"):
+        if not os.getenv("GOOGLE_KEY") or not os.getenv("TAVILY_API_KEY"):
             print("❌ ERROR: Missing API Keys in .env")
             raise ValueError("Missing API Keys")
 

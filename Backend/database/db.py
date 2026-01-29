@@ -8,23 +8,26 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-def create_blog_posts_table():
+def init_db():
+    """Initialises the database with the full schema required for content generation."""
     db = get_db()
     try:
-        cursor = db.cursor()
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS blog_posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            topic TEXT NOT NULL,
-            keywords TEXT NOT NULL,
-            outline TEXT,
-            status TEXT NOT NULL,
-            user_id TEXT
-        )
-        """)
+        # Added 'content' to store the full AI post and 'created_at' for sorting
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS blog_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                topic TEXT NOT NULL,
+                keywords TEXT NOT NULL,
+                outline TEXT,
+                content TEXT, 
+                status TEXT DEFAULT 'RESEARCHING',
+                user_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         db.commit()
     finally:
-        db.close() #
+        db.close()
 
 def create_blog_post(topic: str, keywords: str, user_id: str = None) -> int:
     db = get_db()
@@ -46,6 +49,28 @@ def update_db_outline(post_id: int, outline_json: str):
         cursor.execute(
             "UPDATE blog_posts SET outline = ?, status = 'OUTLINE_READY' WHERE id = ?",
             (outline_json, post_id)
+        )
+        db.commit()
+    finally:
+        db.close()
+
+def get_post_for_generation(post_id: int):
+    db = get_db()
+    # Retrieve both topic and outline for better context
+    post = db.execute(
+        "SELECT topic, outline FROM blog_posts WHERE id = ?", 
+        (post_id,)
+    ).fetchone()
+    db.close()
+    return post
+
+def update_db_content(post_id: int, generated_text: str):
+    """Saves the full AI-generated blog post and updates status to Published"""
+    db = get_db()
+    try:
+        db.execute(
+            "UPDATE blog_posts SET content = ?, status = 'Published' WHERE id = ?",
+            (generated_text, post_id)
         )
         db.commit()
     finally:

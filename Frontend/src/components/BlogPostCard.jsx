@@ -1,86 +1,109 @@
-// src/components/BlogPostCard.jsx
+import React, { useEffect, useState } from "react";
 
-export default function BlogPostCard({ post }) {
-  const isDraft = post.status === 'Drafting';
-  const isError = post.status.includes('Error');
+export default function BlogPostCard({ post: initialPost }) {
+  // Local state allows the card to update "live" when polling detects a change
+  const [post, setPost] = useState(initialPost);
+  
+  const isWriting = post.status === 'WRITING';
+  const isPublished = post.status === 'Published';
+  const isError = post.status === 'ERROR';
 
-  // DYNAMIC IMAGE LOGIC
-  // We use the post ID to ensure each card gets a different professional image
-  // Keywords are strictly filtered for tech/workspace to avoid sensitive results
-  const keywords = ["technology", "minimal", "workspace", "abstract", "code", "laptop"];
-  const selectedKeyword = keywords[post.id % keywords.length];
-  const uniqueImageUrl = `https://loremflickr.com/400/250/${selectedKeyword}?lock=${post.id}`;
+  // --- LIVE POLLING LOGIC ---
+  useEffect(() => {
+    let interval;
+
+    // Only start polling if the status is currently 'WRITING'
+    if (isWriting) {
+      interval = setInterval(async () => {
+        try {
+          const response = await fetch(`http://localhost:8000/api/blog-posts/${post.id}`);
+          if (response.ok) {
+            const updatedPost = await response.json();
+            
+            // Sync the card UI with the backend database
+            setPost(updatedPost);
+
+            // Stop polling immediately once the status is no longer 'WRITING'
+            if (updatedPost.status !== 'WRITING') {
+              clearInterval(interval);
+            }
+          }
+        } catch (error) {
+          console.error("Polling error:", error);
+        }
+      }, 3000); // Check every 3 seconds
+    }
+
+    return () => clearInterval(interval);
+  }, [isWriting, post.id]);
+
+  // Dynamic Image Logic
+  const uniqueImageUrl = `https://loremflickr.com/400/250/technology,minimal?lock=${post.id}`;
 
   return (
-    <div className="p-[1px] rounded-[2.5rem] bg-gradient-to-br from-emerald-400/40 via-transparent to-teal-400/40 shadow-lg transition-all duration-500 hover:shadow-emerald-200/50 hover:-translate-y-2 group h-full">
-      <div className="bg-white p-6 rounded-[2.45rem] h-full flex flex-col justify-between relative overflow-hidden">
+    <div className="group relative h-full">
+      {/* GLOW AURA: Intensifies on hover */}
+      <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-[3rem] blur-xl opacity-0 group-hover:opacity-10 transition duration-500"></div>
+      
+      {/* MAIN GLASS CONTAINER */}
+      <div className="relative bg-white/60 backdrop-blur-2xl p-6 rounded-[2.8rem] border border-white/60 shadow-xl flex flex-col h-full transition-all duration-500 group-hover:translate-y-[-8px]">
         
-        <div className="relative z-10">
-          {/* Header Badge */}
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white px-4 py-2 rounded-xl font-bold text-[10px] tracking-widest uppercase shadow-md shadow-emerald-100">
-              {post.title}
-            </div>
-          </div>
-
-          {/* DYNAMIC THUMBNAIL PREVIEW */}
-          <div className="relative w-full h-44 mb-6 rounded-2xl overflow-hidden border border-slate-100 group-hover:shadow-md transition-shadow duration-300 bg-slate-50">
-            <img 
-              src={uniqueImageUrl} 
-              alt={post.title}
-              className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700 ease-in-out"
-              key={post.id}
-            />
-            
-            {/* Error Overlay */}
-            {isError && (
-              <div className="absolute inset-0 bg-red-500/10 backdrop-blur-[2px] flex items-center justify-center">
-                <span className="bg-white/90 text-red-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">
-                  Action Required
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Status & Content */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <span className={`h-2 w-2 rounded-full ring-4 ${
-                isError ? 'bg-red-500 ring-red-50' : 
-                isDraft ? 'bg-amber-400 ring-amber-50' : 
-                'bg-[#2ecc91] ring-emerald-50'
-              } ${!isError && 'animate-pulse'}`} />
-              <p className={`text-[10px] font-black tracking-[0.2em] uppercase ${isError ? 'text-red-500' : 'text-slate-500'}`}>
-                {post.status}
-              </p>
-            </div>
-
-            <p className="text-slate-500 text-sm leading-relaxed line-clamp-2">
-              {isDraft 
-                ? "AI is currently researching and outlining the best points for this topic..." 
-                : "Your blog post has been successfully generated and is ready for review."}
-            </p>
-
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              {post.date || "Just now"}
-            </div>
+        {/* IMAGE SECTION */}
+        <div className="relative h-44 mb-6 rounded-[2rem] overflow-hidden border border-white/40 shadow-inner bg-slate-50">
+          <img 
+            src={uniqueImageUrl} 
+            alt={post.topic} 
+            className={`w-full h-full object-cover transition-all duration-700 ${isWriting ? 'blur-[2px] opacity-60' : 'group-hover:scale-110'}`} 
+          />
+          
+          {/* Status Badge Over Image */}
+          <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full shadow-sm flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${
+              isWriting ? 'bg-blue-500 animate-ping' : 
+              isError ? 'bg-red-500' : 'bg-emerald-500'
+            }`} />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
+              {isWriting ? "Writing..." : post.status}
+            </span>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="relative z-10 flex items-center justify-between pt-6 mt-6 border-t border-slate-50">
-          <div className="flex gap-3">
-            <button className="text-slate-300 hover:text-[#2ecc91] transition-colors p-2 hover:bg-emerald-50 rounded-lg">
-               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-            </button>
-            <button className="text-slate-300 hover:text-red-400 transition-colors p-2 hover:bg-red-50 rounded-lg">
-               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-            </button>
+        {/* PROGRESS BAR: Only visible during active background generation */}
+        {isWriting && (
+          <div className="w-full h-1.5 bg-slate-200/50 rounded-full overflow-hidden mb-6">
+            <div className="h-full bg-blue-500 animate-pulse w-3/4 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
           </div>
+        )}
 
-          <button className="bg-[#111827] text-white px-8 py-3 rounded-2xl font-black text-[10px] tracking-widest uppercase transition-all shadow-lg hover:bg-[#2ecc91] active:scale-95">
-            View
+        {/* CONTENT AREA */}
+        <div className="space-y-3 flex-grow">
+          <h3 className="text-xl font-black text-slate-900 leading-tight group-hover:text-emerald-700 transition-colors">
+            {post.topic || "Untitled Post"} 
+          </h3>
+          <p className="text-slate-500 text-xs font-medium leading-relaxed opacity-80 line-clamp-2">
+            {isWriting 
+              ? "AI is currently expanding your approved outline into a full-length masterpiece..." 
+              : "Professional content drafting optimized for engagement and reach."}
+          </p>
+        </div>
+
+        {/* FOOTER ACTIONS */}
+        <div className="flex items-center justify-between pt-6 mt-6 border-t border-white/40">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            {post.date || "Just now"}
+          </span>
+          
+          <button 
+            disabled={isWriting}
+            className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
+              isWriting 
+                ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
+                : isPublished 
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200/50 hover:-translate-y-0.5" 
+                  : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200/50 hover:-translate-y-0.5"
+            }`}
+          >
+            {isWriting ? "Processing" : isPublished ? "Read Post" : "Edit Post"}
           </button>
         </div>
       </div>

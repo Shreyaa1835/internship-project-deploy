@@ -207,8 +207,8 @@ export default function CreatePost() {
               <div className="pointer-events-auto h-full min-h-[500px]">
                 <OutlineView 
                   outline={outline} 
-                  onApprove={() => navigate("/dashboard")} 
-                  onCancel={() => setStatus("idle")}
+  postId={postId} 
+  onCancel={() => setStatus("idle")}
                 />
               </div>
             </div>
