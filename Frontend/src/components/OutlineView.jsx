@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAuth } from "firebase/auth"; // Import Firebase Auth
 import { CheckCircle2, ChevronRight, X, Loader2 } from "lucide-react";
 
 export default function OutlineView({ outline, postId, onCancel }) {
@@ -9,16 +10,34 @@ export default function OutlineView({ outline, postId, onCancel }) {
   const data = typeof outline === "string" ? JSON.parse(outline) : outline;
 
   const handleApprove = async () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      alert("Session expired. Please log in again.");
+      return;
+    }
+
     setIsApproving(true);
     try {
-      // Call the generation endpoint to start the long-running LLM operation
+      // Requirement: Extract the Firebase ID token for authentication
+      const token = await user.getIdToken();
+
+      // Call the generation endpoint with secure headers
       const response = await fetch(`http://localhost:8000/api/blog-posts/${postId}/generate`, {
         method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`, // Token-based authentication
+          "Content-Type": "application/json"
+        }
       });
 
       if (response.ok) {
-        // Navigate to dashboard to watch the progress via status polling
+        // Navigate back to dashboard where polling will show the "WRITING" status
         navigate("/dashboard");
+      } else {
+        const errorData = await response.json();
+        console.error("Server error:", errorData.detail);
       }
     } catch (err) {
       console.error("Failed to trigger generation:", err);

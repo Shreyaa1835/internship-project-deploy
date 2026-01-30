@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getAuth } from "firebase/auth"; 
 import Sidebar from "../components/Sidebar"; 
 import BlogPostList from "../components/BlogPostList";
 import SearchBar from "../components/SearchBar";
@@ -10,28 +11,64 @@ import { Menu, Sparkles } from "lucide-react";
 export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
   const [activeFilter, setActiveFilter] = useState("All");
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  const allPosts = [
-    { id: 1, title: "AI Blog Post 1", status: "WRITING", date: "5 min ago" },
-    { id: 2, title: "AI Blog Post 2", status: "Published", date: "Jan 25, 2026" },
-    { id: 3, title: "AI Blog Post 3", status: "OUTLINE_READY", date: "Just now" },
-    { id: 4, title: "AI Blog Post 4", status: "Scheduled", date: "Jan 27, 2026" },
-  ];
+  const auth = getAuth();
+  const user = auth.currentUser;
+  const userName = user?.email?.split('@')[0] || "User";
 
-  const filteredPosts = allPosts.filter(post => {
+  // --- FETCH LOGIC: Firebase Token Integration ---
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        if (!user) throw new Error("No authenticated user found");
+
+        // Requirement: Include Firebase auth token in request headers
+        const token = await user.getIdToken();
+
+        const response = await fetch(`http://localhost:8000/api/blog-posts`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`, // Secure Token-based Auth
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch posts from server");
+        const data = await response.json();
+        
+        // Sorting by ID or date descending (latest first)
+        const sortedData = data.sort((a, b) => b.id - a.id);
+        setPosts(sortedData);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) fetchPosts();
+  }, [user]);
+
+  // --- SLICING & FILTERING LOGIC ---
+  // Requirement: Main feed shows only the last 4 posts
+  const recentPostsSlice = posts.slice(0, 4);
+
+  const filteredRecentPosts = recentPostsSlice.filter(post => {
     if (activeFilter === "All") return true;
+    // Requirement: Drafts captures work-in-progress states
     if (activeFilter === "Drafts") {
-      return (
-        post.status === "Drafting" || 
-        post.status === "WRITING" || 
-        post.status === "OUTLINE_READY"
-      );
+      return ["Drafting", "WRITING", "OUTLINE_READY", "RESEARCHING", "Draft"].includes(post.status);
+    }
+    // Requirement: Published only shows final "Published" status
+    if (activeFilter === "Published") {
+      return post.status === "Published";
     }
     return post.status === activeFilter;
   });
-
-  const userEmail = localStorage.getItem("userEmail") || "guest@example.com"; 
-  const userName = userEmail.split('@')[0].charAt(0).toUpperCase() + userEmail.split('@')[0].slice(1);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -42,15 +79,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] relative overflow-hidden flex flex-col">
-      
-      {/* --- UNIFIED GLOW LAYER --- */}
+      {/* Background Decor */}
       <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-emerald-300/40 rounded-full blur-[120px] animate-pulse pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-teal-200/40 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute top-[20%] right-[20%] w-[40%] h-[40%] bg-blue-200/20 rounded-full blur-[100px] pointer-events-none" />
 
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      {/* Glass Navbar */}
       <header className="relative z-[100] bg-white/30 backdrop-blur-md border-b border-white/40 px-8 py-5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-6">
           <button 
@@ -71,62 +105,45 @@ export default function Dashboard() {
       </header>
 
       <main className="relative z-10 w-full max-w-7xl mx-auto px-6 py-12 flex-grow">
-        {/* Header Section */}
+        {/* Header Greeting */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
           <div className="space-y-3">
             <p className="text-emerald-600 font-black text-xs uppercase tracking-[0.4em] mb-2 flex items-center gap-2">
                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                Workspace Active
             </p>
-            <h1 className="text-6xl font-black text-slate-900 tracking-tighter leading-none">
+            <h1 className="text-6xl font-black text-slate-900 tracking-tighter leading-none capitalize">
               {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">{userName}!</span>
             </h1>
           </div>
           <CreateButton />
         </div>
 
-        {/* --- FIXED SEARCH & FILTER SECTION --- */}
+        {/* --- SEARCH & FILTER SECTION --- */}
         <div className="relative mb-14 group">
           <div className="absolute -inset-2 bg-gradient-to-r from-emerald-100/30 to-teal-100/30 rounded-[3rem] blur-3xl opacity-50 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-
-          <div className="
-            relative 
-            flex flex-col lg:flex-row gap-6 items-center justify-between 
-            p-4 lg:p-5 
-            bg-white/60 backdrop-blur-2xl 
-            rounded-[2.8rem] 
-            border border-white/80 
-            shadow-[0_25px_80px_-15px_rgba(0,0,0,0.08)] 
-            hover:shadow-[0_30px_90px_-10px_rgba(16,185,129,0.15)]
-            transition-all duration-500
-          ">
+          
+          <div className="relative flex flex-col lg:flex-row gap-6 items-center justify-between p-4 lg:p-5 bg-white/95 backdrop-blur-3xl rounded-[2.8rem] border border-white shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] transition-all duration-500">
             <div className="w-full lg:max-w-md transition-transform duration-300 focus-within:scale-[1.02]">
               <SearchBar />
             </div>
 
-            <div className="
-              flex items-center 
-              bg-slate-200/30 backdrop-blur-md 
-              p-1.5 rounded-[1.8rem] 
-              border border-white/40 
-              shadow-inner
-            ">
+            {/* RECESSED FILTER WELL UI */}
+            <div className="flex items-center bg-slate-900/5 backdrop-blur-md p-1.5 rounded-[1.8rem] border border-slate-200/50 shadow-[inset_0_4px_8px_rgba(0,0,0,0.06)]">
               {["All", "Drafts", "Published", "Scheduled"].map((f) => {
                 const isActive = activeFilter === f;
                 return (
                   <button
                     key={f}
                     onClick={() => setActiveFilter(f)}
-                    className={`
-                      relative px-7 py-2.5 rounded-2xl text-[13px] font-black tracking-wide uppercase transition-all duration-500
-                      ${isActive 
-                        ? "text-emerald-700 bg-white shadow-[0_10px_25px_-5px_rgba(16,185,129,0.2)] scale-100 opacity-100" 
+                    className={`relative px-7 py-2.5 rounded-2xl text-[13px] font-black tracking-wide uppercase transition-all duration-500 ${
+                      isActive 
+                        ? "text-emerald-700 bg-white shadow-sm scale-100 opacity-100" 
                         : "text-slate-500 hover:text-slate-900 opacity-70 hover:opacity-100"
-                      }
-                    `}
+                    }`}
                   >
                     {isActive && (
-                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
+                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                     )}
                     {f}
                   </button>
@@ -136,13 +153,26 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+        {/* --- CONTENT GRID --- */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 items-start">
           <div className="xl:col-span-8">
-             <BlogPostList posts={filteredPosts} />
+              
+              {loading ? (
+                <div className="p-20 text-center text-slate-400 animate-pulse font-bold">Fetching masterpieces...</div>
+              ) : error ? (
+                <div className="p-20 text-center text-red-400 font-bold">Error: {error}</div>
+              ) : filteredRecentPosts.length === 0 ? (
+                <div className="p-20 text-center text-slate-400 font-bold">Empty State: No posts found.</div>
+              ) : (
+                <BlogPostList posts={filteredRecentPosts} />
+              )}
           </div>
-          <aside className="xl:col-span-4">
-             <AnalyticsCard />
+
+          {/* ASIDE: Analytics + Full Directory */}
+          <aside className="xl:col-span-4 space-y-8 sticky top-8">
+              <AnalyticsCard posts={posts} />
+              
+              
           </aside>
         </div>
       </main>

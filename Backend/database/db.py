@@ -75,3 +75,19 @@ def update_db_content(post_id: int, generated_text: str):
         db.commit()
     finally:
         db.close()
+
+def get_user_posts(user_id: str):
+    db = get_db()
+    try:
+        # Use * to see if it works without specific column naming first
+        cursor = db.execute(
+            "SELECT * FROM blog_posts WHERE user_id = ? ORDER BY id DESC", 
+            (user_id,)
+        )
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        print(f"💥 SQL ERROR: {e}")
+        return []
+    finally:
+        db.close()

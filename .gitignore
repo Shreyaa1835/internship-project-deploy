@@ -1,6 +1,7 @@
 # ---------- Environment variables ----------
 .env
 .env.local
+serviceAccountKey.json
 # ---------- Python ----------
 .venv/
 __pycache__/

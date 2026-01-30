@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAuth } from "firebase/auth"; // Import Firebase Auth
 import { Sparkles, ArrowLeft, Hash, Layout } from "lucide-react";
 import OutlineView from "../components/OutlineView";
 
@@ -14,24 +15,34 @@ export default function CreatePost() {
   const [outline, setOutline] = useState(null);
   
   const navigate = useNavigate();
+  const auth = getAuth();
+  const user = auth.currentUser;
 
+  // --- POLLING LOGIC WITH TOKEN AUTH ---
   useEffect(() => {
     let interval;
-    if (status === "researching" && postId) {
+    if (status === "researching" && postId && user) {
       interval = setInterval(async () => {
         try {
-          const response = await fetch(`http://localhost:8000/api/blog-posts/${postId}`);
+          // Requirement: GET fresh token for secure background status checks
+          const token = await user.getIdToken();
+          
+          const response = await fetch(`http://localhost:8000/api/blog-posts/${postId}`, {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${token}` // Token-based Auth to prevent 401s
+            }
+          });
           
           if (response.status === 404) return; 
-
           if (!response.ok) throw new Error("Server communication error");
           
           const data = await response.json();
           
+          // Logic to handle research status transitions
           if (data.status === "OUTLINE_READY") {
             try {
               let rawOutline = data.outline;
-              
               if (typeof rawOutline === "string") {
                 rawOutline = rawOutline.replace(/```json|```/g, "").trim();
               }
@@ -62,26 +73,39 @@ export default function CreatePost() {
       }, 3000); 
     }
     return () => clearInterval(interval);
-  }, [status, postId]);
+  }, [status, postId, user]);
 
+  // --- SUBMIT LOGIC WITH TOKEN AUTH ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!topic.trim()) {
       setError("Please provide a topic for the AI to research.");
       return;
     }
+
+    if (!user) {
+      setError("You must be logged in to generate posts.");
+      return;
+    }
+
     setError("");
     setLoading(true);
     setStatus("researching"); 
 
     try {
+      // Requirement: Extract userId from Firebase token on Backend
+      const token = await user.getIdToken();
+
       const response = await fetch("http://localhost:8000/api/blog-posts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Secure header for POST
+        },
         body: JSON.stringify({ 
           topic, 
-          keywords,
-          user_id: "user_dev_test" 
+          keywords
+          // Note: userId is extracted from token by FastAPI
         }),
       });
 
@@ -101,7 +125,7 @@ export default function CreatePost() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] relative overflow-hidden flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-[#F1F5F9] relative overflow-hidden flex flex-col items-center justify-center p-6 text-capitalize">
       
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-300/60 rounded-full blur-[120px] animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-teal-200/70 rounded-full blur-[120px]" />
@@ -118,7 +142,6 @@ export default function CreatePost() {
       </div>
 
       <div className="relative z-10 w-full max-w-5xl flex flex-col items-center">
-        
         <div className={`grid lg:grid-cols-2 gap-12 items-center w-full transition-all duration-700`}>
           
           {/* LEFT CONTENT */}
@@ -201,14 +224,13 @@ export default function CreatePost() {
               className="absolute inset-0 bg-transparent" 
               onClick={() => setStatus("idle")} 
             />
-            
             <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-12 pointer-events-none">
               <div className="invisible" /> 
               <div className="pointer-events-auto h-full min-h-[500px]">
                 <OutlineView 
                   outline={outline} 
-  postId={postId} 
-  onCancel={() => setStatus("idle")}
+                  postId={postId} 
+                  onCancel={() => setStatus("idle")}
                 />
               </div>
             </div>

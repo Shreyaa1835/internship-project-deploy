@@ -1,9 +1,19 @@
-export default function AnalyticsCard() {
+export default function AnalyticsCard({ posts = [] }) {
+  // --- DYNAMIC CALCULATIONS ---
+  const total = posts.length;
+  // We count any status that falls under drafting (Writing, Researching, etc.)
+  const drafting = posts.filter(p => ["RESEARCHING", "WRITING", "OUTLINE_READY", "Drafting", "Draft"].includes(p.status)).length;
+  const published = posts.filter(p => p.status === "Published").length;
+  const scheduled = posts.filter(p => p.status === "Scheduled").length;
+
+  // Calculate completion percentage based on published vs total
+  const completionRate = total > 0 ? Math.round((published / total) * 100) : 0;
+
   const stats = [
-    { label: "Total Projects", value: "8", color: "text-slate-800" },
-    { label: "Drafting", value: "4", color: "text-amber-500" }, 
-    { label: "Published", value: "3", color: "text-emerald-500" },
-    { label: "Scheduled", value: "1", color: "text-teal-500" },
+    { label: "Total Projects", value: total, color: "text-slate-800" },
+    { label: "Drafting", value: drafting, color: "text-amber-500" }, 
+    { label: "Published", value: published, color: "text-emerald-500" },
+    { label: "Scheduled", value: scheduled, color: "text-teal-500" },
   ];
 
   return (
@@ -19,18 +29,41 @@ export default function AnalyticsCard() {
             <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-widest">Real-time Performance</p>
           </div>
 
-          <div className="flex items-center justify-around py-6 bg-white/30 rounded-[2.5rem] border border-white/40">
-            <div className="relative h-24 w-24 rounded-full border-[10px] border-white/50 flex items-center justify-center shadow-lg">
-               <div className="absolute h-24 w-24 rounded-full border-[10px] border-emerald-500 border-t-transparent -rotate-45"></div>
-               <span className="text-md font-black text-slate-800">38%</span>
+          {/* Chart Section with Enhanced Depth & Contrast */}
+          <div className="flex items-center justify-around py-6 bg-slate-950/5 rounded-[2.5rem] border border-white/20 shadow-inner">
+            <div className="relative h-24 w-24 rounded-full flex items-center justify-center shadow-lg bg-white/80 overflow-hidden">
+               {/* The Dynamic Progress Ring - Using #f1f5f9 for the track color */}
+               <div 
+                 className="absolute inset-0 rounded-full transition-all duration-1000 ease-out"
+                 style={{ 
+                   background: `conic-gradient(#10b981 ${completionRate}%, #f1f5f9 0)` 
+                 }}
+               ></div>
+               
+               {/* Inner Mask - White for high visibility */}
+               <div className="absolute inset-[10px] bg-white rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] z-10">
+                  <span className="text-md font-black text-slate-800">{completionRate}%</span>
+               </div>
             </div>
+            
+            {/* Dynamic Bar Heights */}
             <div className="flex items-end gap-2 h-20">
-              <div className="w-3 bg-amber-400 rounded-full h-[80%] shadow-lg shadow-amber-200/50"></div>
-              <div className="w-3 bg-emerald-500 rounded-full h-[60%] shadow-lg shadow-emerald-200/50"></div>
-              <div className="w-3 bg-teal-400 rounded-full h-[40%]"></div>
+              <div 
+                className="w-3 bg-amber-400 rounded-full shadow-lg shadow-amber-200/50 transition-all duration-700" 
+                style={{ height: total > 0 ? `${Math.max((drafting/total) * 100, 10)}%` : '10%' }}
+              ></div>
+              <div 
+                className="w-3 bg-emerald-500 rounded-full shadow-lg shadow-emerald-200/50 transition-all duration-700" 
+                style={{ height: total > 0 ? `${Math.max((published/total) * 100, 10)}%` : '10%' }}
+              ></div>
+              <div 
+                className="w-3 bg-teal-400 rounded-full transition-all duration-700" 
+                style={{ height: total > 0 ? `${Math.max((scheduled/total) * 100, 10)}%` : '10%' }}
+              ></div>
             </div>
           </div>
 
+          {/* Metrics List Section */}
           <div className="space-y-6">
             {stats.map((item, index) => (
               <div key={index} className="flex justify-between items-center border-b border-white/20 pb-4 last:border-0">
