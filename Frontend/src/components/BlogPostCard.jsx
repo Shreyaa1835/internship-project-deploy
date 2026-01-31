@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { getAuth } from "firebase/auth"; // Import Firebase Auth
+import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+import { getAuth } from "firebase/auth";
 
 // Helper function to calculate time distance accurately by forcing UTC comparison
 const getRelativeTime = (timestamp) => {
@@ -23,6 +24,7 @@ const getRelativeTime = (timestamp) => {
 
 export default function BlogPostCard({ post: initialPost }) {
   const [post, setPost] = useState(initialPost);
+  const navigate = useNavigate(); // Initialize the navigate hook
   
   const isWriting = post.status === 'WRITING' || post.status === 'RESEARCHING';
   const isPublished = post.status === 'Published';
@@ -34,17 +36,15 @@ export default function BlogPostCard({ post: initialPost }) {
     const auth = getAuth();
     const user = auth.currentUser;
 
-    // Requirement: Polling triggers only for active generation with an authenticated user
     if (isWriting && user) {
       interval = setInterval(async () => {
         try {
-          // Requirement: Get fresh token to satisfy backend 'get_current_user' dependency
           const token = await user.getIdToken();
 
           const response = await fetch(`http://localhost:8000/api/blog-posts/${post.id}`, {
             method: "GET",
             headers: {
-              "Authorization": `Bearer ${token}`, // Secure header to prevent 401s
+              "Authorization": `Bearer ${token}`,
               "Content-Type": "application/json"
             }
           });
@@ -53,7 +53,6 @@ export default function BlogPostCard({ post: initialPost }) {
             const updatedPost = await response.json();
             setPost(updatedPost);
 
-            // Stop polling once the AI is done (status moves to Published or Error)
             if (updatedPost.status !== 'WRITING' && updatedPost.status !== 'RESEARCHING') {
               clearInterval(interval);
             }
@@ -66,6 +65,13 @@ export default function BlogPostCard({ post: initialPost }) {
 
     return () => clearInterval(interval);
   }, [isWriting, post.id]);
+
+  // Handler to navigate to the detail page
+  const handleNavigation = () => {
+    if (!isWriting) {
+      navigate(`/blog-posts/${post.id}`); // Requirement: Dynamic route navigation
+    }
+  };
 
   const uniqueImageUrl = `https://loremflickr.com/400/250/technology,minimal?lock=${post.id}`;
 
@@ -116,6 +122,7 @@ export default function BlogPostCard({ post: initialPost }) {
           </span>
           
           <button 
+            onClick={handleNavigation} // Trigger navigation on click
             disabled={isWriting}
             className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
               isWriting 

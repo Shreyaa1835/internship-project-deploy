@@ -144,3 +144,25 @@ async def trigger_generation(
         return {"message": "Generation started", "status": "WRITING"}
     finally:
         db.close()
+
+@app.get("/api/blog-posts/{post_id}")
+async def get_post_detail(post_id: int, current_user: dict = Depends(get_current_user)):
+    """
+    Retrieves a single blog post by ID for the authenticated user.
+    """
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Requirement: Verify the post belongs to the authenticated user
+    cursor.execute(
+        "SELECT * FROM blog_posts WHERE id = ? AND user_id = ?", 
+        (post_id, current_user["uid"])
+    )
+    post = cursor.fetchone()
+    conn.close()
+    
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found or unauthorized")
+    
+    return dict(post)
