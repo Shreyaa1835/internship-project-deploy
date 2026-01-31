@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import { 
   ArrowLeft, Home, Command, FileText, Settings, 
-  Activity, Zap, Edit3, BookOpen 
+  Activity, Zap, Edit3, BookOpen, Trash2 
 } from "lucide-react";
 import BlogPostView from "../components/BlogPostView";
 import ContentEditor from "../components/ContentEditor";
@@ -15,12 +15,14 @@ export default function PostDetail() {
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   
-  // Requirement: Track both content and topic in state
   const [editedContent, setEditedContent] = useState("");
   const [editedTopic, setEditedTopic] = useState(""); 
   
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); 
+
+  // --- NEW STATE FOR PROFESSIONAL UI ---
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -43,7 +45,7 @@ export default function PostDetail() {
         const data = await res.json();
         setPost(data);
         setEditedContent(data.content || "");
-        setEditedTopic(data.topic || ""); // Initialize topic state
+        setEditedTopic(data.topic || ""); 
       } catch (err) { 
         console.error("Sync Error:", err);
         setError(err.message);
@@ -64,7 +66,6 @@ export default function PostDetail() {
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${token}` 
             },
-            // Requirement: Send both edited topic and content
             body: JSON.stringify({ topic: editedTopic, content: editedContent })
         });
 
@@ -72,13 +73,42 @@ export default function PostDetail() {
 
         setSaveStatus('success'); 
         setIsEditing(false); 
-        setPost({ ...post, topic: editedTopic, content: editedContent }); // Update local state
+        setPost({ ...post, topic: editedTopic, content: editedContent }); 
         
         setTimeout(() => setSaveStatus(null), 3000);
     } catch (err) {
         setSaveStatus('error');
     } finally {
         setIsSaving(false);
+    }
+  };
+
+  // --- ISSUE #15: UPDATED DELETE LOGIC WITH FEEDBACK ---
+  const handleConfirmDelete = async () => {
+    try {
+        const auth = getAuth();
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch(`http://localhost:8000/api/blog-posts/${id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error("Deletion_Failed");
+
+        // 1. Requirement: Show success confirmation in UI
+        setSaveStatus('deleted'); 
+        
+        // 2. Hide modal
+        setShowDeleteModal(false);
+
+        // 3. Requirement: Redirect to dashboard after showing message
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1500);
+
+    } catch (err) {
+        setSaveStatus('error');
+        setShowDeleteModal(false);
     }
   };
 
@@ -100,7 +130,7 @@ export default function PostDetail() {
 
   if (!post) return (
     <div className="min-h-screen bg-[#F4F9F7] flex items-center justify-center font-black text-emerald-800 uppercase tracking-[0.8em] animate-pulse">
-      Sync_Active
+      Loading
     </div>
   );
 
@@ -120,15 +150,24 @@ export default function PostDetail() {
       </aside>
 
       <main className="flex-grow ml-0 xl:ml-8 flex flex-col gap-6 relative z-10 h-full">
-        <div className="flex-shrink-0 flex items-center justify-between px-8 py-5 bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] shadow-[0_15px_35px_rgba(0,0,0,0.05)]">
+        <div className="flex-shrink-0 flex items-center justify-between px-8 py-5 bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] shadow-[0_15px_35_rgba(0,0,0,0.05)]">
           <button onClick={() => navigate("/dashboard")} className="relative overflow-hidden bg-emerald-600 hover:bg-emerald-500 text-white px-10 py-4 rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.4em] transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.4),0_15px_35px_-5px_rgba(5,150,105,0.4)] border border-emerald-400/50 hover:shadow-[0_0_40px_rgba(16,185,129,0.6)] active:scale-95">
             <span className="relative z-10 flex items-center gap-2"><ArrowLeft size={16} color="white" strokeWidth={3} /> Dashboard</span>
           </button>
 
           <div className="flex gap-4">
+            <button 
+              onClick={() => setShowDeleteModal(true)}
+              className="bg-red-50 text-red-600 p-3 rounded-2xl border-2 border-red-100 hover:bg-red-500 hover:text-white transition-all active:scale-95"
+              title="Delete Manuscript"
+            >
+              <Trash2 size={20} />
+            </button>
+
             <button onClick={() => setIsEditing(!isEditing)} className="flex items-center gap-3 bg-white border-2 border-emerald-500 text-emerald-600 px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-emerald-50 transition-all active:scale-95">
               {isEditing ? <><BookOpen size={16} /> Read Mode</> : <><Edit3 size={16} /> Edit Mode</>}
             </button>
+            
             <button onClick={handleCommit} disabled={isSaving} className="bg-emerald-600 text-white px-10 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
               {isSaving ? "Syncing..." : <><Zap size={14} className="fill-white" /> Commit Masterpiece</>}
             </button>
@@ -138,7 +177,6 @@ export default function PostDetail() {
         <div className="min-h-[85vh] flex-grow overflow-y-auto pr-2 custom-scrollbar bg-white/95 backdrop-blur-3xl border-[3px] border-emerald-400/10 rounded-[5rem] relative transition-all duration-700 ease-out shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15),0_0_40px_rgba(16,185,129,0.08)] hover:-translate-y-2 hover:shadow-[0_60px_130px_-30px_rgba(0,0,0,0.2),0_0_60px_rgba(16,185,129,0.25)] hover:border-emerald-400/30">
           <div className="p-10 lg:p-20 min-h-full">
             {isEditing ? (
-              // Pass topic state to editor
               <ContentEditor 
                 topic={editedTopic} 
                 setTopic={setEditedTopic} 
@@ -152,8 +190,50 @@ export default function PostDetail() {
         </div>
       </main>
 
+      {/* --- PROFESSIONAL DELETE CONFIRMATION MODAL --- */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border-[3px] border-red-50 animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-6">
+              <Trash2 size={32} />
+            </div>
+            
+            <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2 ">
+              Delete Manuscript?
+            </h3>
+            <p className="text-slate-500 font-medium leading-relaxed mb-8">
+              This will permanently delete this record from the vault. This action cannot be undone.
+            </p>
+
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-grow py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all"
+              >
+                No
+              </button>
+              <button 
+                onClick={handleConfirmDelete}
+                className="flex-grow bg-red-500 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-600 transition-all"
+              >
+                Delete Record
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- UPDATED DYNAMIC TOAST FEEDBACK --- */}
       {saveStatus === 'success' && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-2xl animate-bounce z-50">Sync Complete</div>
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-2xl animate-bounce z-[100]">Sync Complete</div>
+      )}
+      
+      {saveStatus === 'deleted' && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-red-500 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-2xl animate-bounce z-[100]">Record Successfully Deleted</div>
+      )}
+
+      {saveStatus === 'error' && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-red-500 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-2xl z-[100]">Neural Sync Failed</div>
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #10b98133; border-radius: 10px; }`}} />

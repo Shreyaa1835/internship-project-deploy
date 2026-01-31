@@ -164,3 +164,32 @@ async def generate(
         return {"status": "WRITING"}
     finally:
         db.close()
+
+# --- ISSUE #15: DELETE FEATURE ---
+@app.delete("/api/blog-posts/{post_id}")
+async def delete_post(
+    post_id: int, 
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Requirement: DELETE endpoint removes post after ownership verification.
+    """
+    db = get_db()
+    try:
+        # 1. Verify ownership
+        post = db.execute(
+            "SELECT id FROM blog_posts WHERE id = ? AND user_id = ?",
+            (post_id, user_id)
+        ).fetchone()
+
+        if not post:
+            # Handle unauthorized or missing post
+            raise HTTPException(status_code=404, detail="Post not found or unauthorized")
+
+        # 2. Remove from database
+        db.execute("DELETE FROM blog_posts WHERE id = ?", (post_id,))
+        db.commit()
+
+        return {"status": "success", "message": "Post permanently removed"}
+    finally:
+        db.close()
