@@ -1,11 +1,12 @@
 import os
 import sqlite3
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Header, Request
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Header, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import firebase_admin
 from firebase_admin import auth as firebase_auth, credentials
+from typing import Optional
 
 from database.db import (
     create_blog_post,
@@ -93,7 +94,42 @@ def update_blog_post(post_id: int, user_id: str, topic: str, content: str):
     finally:
         db.close()
 
-# ---------------- ROUTES ----------------
+def search_posts_in_db(query: str, user_id: str):
+    db = get_db()
+    try:
+        search_term = f"%{query.lower()}%"
+        cursor = db.execute(
+            """
+            SELECT * FROM blog_posts 
+            WHERE user_id = ? 
+            AND (LOWER(topic) LIKE ? OR LOWER(content) LIKE ?)
+            ORDER BY id DESC
+            """,
+            (user_id, search_term, search_term)
+        )
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        db.close()
+
+# ---------------------------------------------------------
+# 1. STATIC ROUTES 
+# ---------------------------------------------------------
+
+@app.get("/api/blog-posts/search")
+async def search_posts(
+    query: str = "", 
+    user_id: str = Depends(get_current_user)
+):
+    print(f"DEBUG: Search hit. Term: '{query}'")
+    if not query.strip():
+        return get_user_posts(user_id)
+    return search_posts_in_db(query.strip(), user_id)
+
+@app.get("/api/blog-posts")
+async def fetch_posts(user_id: str = Depends(get_current_user)):
+    return get_user_posts(user_id)
+
 @app.post("/api/blog-posts")
 async def create_post(
     request: BlogPostRequest,
@@ -109,9 +145,9 @@ async def create_post(
     )
     return {"postId": post_id, "status": "RESEARCHING"}
 
-@app.get("/api/blog-posts")
-async def fetch_posts(user_id: str = Depends(get_current_user)):
-    return get_user_posts(user_id)
+# ---------------------------------------------------------
+# 2. DYNAMIC ID ROUTES 
+# ---------------------------------------------------------
 
 @app.get("/api/blog-posts/{post_id}")
 async def get_post(post_id: int, user_id: str = Depends(get_current_user)):
@@ -191,7 +227,6 @@ async def delete_post(
     finally:
         db.close()
 
-#---------------- Plagiarism Analysis ----------------
 @app.post("/api/blog-posts/{post_id}/check-plagiarism")
 async def check_plagiarism(post_id: int, user_id: str = Depends(get_current_user)):
     db = get_db()
@@ -204,8 +239,6 @@ async def check_plagiarism(post_id: int, user_id: str = Depends(get_current_user
     finally:
         db.close()
 
-# ---------------- Humanized Rewrite ----------------
-# main.py
 @app.post("/api/blog-posts/{post_id}/humanize")
 async def humanize_post(post_id: int, request: Request, user_id: str = Depends(get_current_user)):
     try:
@@ -213,7 +246,6 @@ async def humanize_post(post_id: int, request: Request, user_id: str = Depends(g
     except:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    # FRONTEND SENDS 'user_prompt' -> BACKEND READS 'user_prompt'
     user_prompt = payload.get("user_prompt", "") 
     tone = payload.get("tone", "balanced")
 
@@ -223,10 +255,7 @@ async def humanize_post(post_id: int, request: Request, user_id: str = Depends(g
         if not row or not row["content"]:
             raise HTTPException(status_code=404, detail="Content not found")
             
-        # Call the humanizer service
         rewritten = await humanize_full_content(row["content"], user_prompt, tone)
-        
-        # Rewritten contains {'rewritten_content': '...'}
         return rewritten
     finally:
         db.close()

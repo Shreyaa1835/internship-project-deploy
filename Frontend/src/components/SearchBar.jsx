@@ -1,4 +1,4 @@
-export default function SearchBar() {
+export default function SearchBar({ value, onChange }) {
   return (
     <div className="relative group w-full">
       <span className="absolute inset-y-0 left-5 flex items-center text-slate-500 z-10 pointer-events-none group-focus-within:text-emerald-500 transition-colors">
@@ -10,28 +10,10 @@ export default function SearchBar() {
       
       <input
         type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Search blog posts..."
-        className="
-          w-full pl-14 pr-6 py-4 
-          /* DARK TINT INNER: This is key for contrast against a bright outer bar */
-          bg-slate-900/5 
-          backdrop-blur-xl
-          border border-slate-200/50
-          rounded-2xl 
-          /* DEEP INNER SHADOW: Forces the depth effect */
-          shadow-[inset_0_4px_8px_rgba(0,0,0,0.08)] 
-          /* FOCUS: Switches to a clean bright white when active */
-          focus:bg-white 
-          focus:ring-4 
-          focus:ring-emerald-500/15 
-          focus:border-emerald-500/40
-          focus:shadow-none
-          outline-none 
-          transition-all 
-          placeholder:text-slate-400 
-          font-bold 
-          text-slate-700
-        "
+        className="w-full pl-14 pr-6 py-4 bg-slate-900/5 backdrop-blur-xl border border-slate-200/50 rounded-2xl shadow-[inset_0_4px_8px_rgba(0,0,0,0.08)] focus:bg-white focus:ring-4 focus:ring-emerald-500/15 focus:border-emerald-500/40 focus:shadow-none outline-none transition-all placeholder:text-slate-400 font-bold text-slate-700"
       />
     </div>
   );
