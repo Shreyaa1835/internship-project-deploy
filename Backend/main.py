@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Header
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
@@ -15,6 +15,10 @@ from database.db import (
 )
 from services.researcher import perform_research_and_outline
 from services.writer import generate_blog_content
+
+# --- IMPORT NEW MODULAR SERVICES ---
+from services.plagiarism import analyze_content_patterns  # LLM-1
+from services.humanizer import humanize_full_content   # LLM-2
 
 # ---------------- FIREBASE INIT ----------------
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -165,31 +169,64 @@ async def generate(
     finally:
         db.close()
 
-# --- ISSUE #15: DELETE FEATURE ---
 @app.delete("/api/blog-posts/{post_id}")
 async def delete_post(
     post_id: int, 
     user_id: str = Depends(get_current_user)
 ):
-    """
-    Requirement: DELETE endpoint removes post after ownership verification.
-    """
     db = get_db()
     try:
-        # 1. Verify ownership
         post = db.execute(
             "SELECT id FROM blog_posts WHERE id = ? AND user_id = ?",
             (post_id, user_id)
         ).fetchone()
 
         if not post:
-            # Handle unauthorized or missing post
             raise HTTPException(status_code=404, detail="Post not found or unauthorized")
 
-        # 2. Remove from database
         db.execute("DELETE FROM blog_posts WHERE id = ?", (post_id,))
         db.commit()
 
         return {"status": "success", "message": "Post permanently removed"}
+    finally:
+        db.close()
+
+#---------------- Plagiarism Analysis ----------------
+@app.post("/api/blog-posts/{post_id}/check-plagiarism")
+async def check_plagiarism(post_id: int, user_id: str = Depends(get_current_user)):
+    db = get_db()
+    try:
+        row = db.execute("SELECT content FROM blog_posts WHERE id=? AND user_id=?", (post_id, user_id)).fetchone()
+        if not row or not row["content"]:
+            raise HTTPException(status_code=404, detail="Content not found")
+        result = await analyze_content_patterns(row["content"])
+        return result
+    finally:
+        db.close()
+
+# ---------------- Humanized Rewrite ----------------
+# main.py
+@app.post("/api/blog-posts/{post_id}/humanize")
+async def humanize_post(post_id: int, request: Request, user_id: str = Depends(get_current_user)):
+    try:
+        payload = await request.json()
+    except:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    # FRONTEND SENDS 'user_prompt' -> BACKEND READS 'user_prompt'
+    user_prompt = payload.get("user_prompt", "") 
+    tone = payload.get("tone", "balanced")
+
+    db = get_db()
+    try:
+        row = db.execute("SELECT content FROM blog_posts WHERE id=? AND user_id=?", (post_id, user_id)).fetchone()
+        if not row or not row["content"]:
+            raise HTTPException(status_code=404, detail="Content not found")
+            
+        # Call the humanizer service
+        rewritten = await humanize_full_content(row["content"], user_prompt, tone)
+        
+        # Rewritten contains {'rewritten_content': '...'}
+        return rewritten
     finally:
         db.close()

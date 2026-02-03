@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import BlogPostView from "../components/BlogPostView";
 import ContentEditor from "../components/ContentEditor";
+import PlagiarismChecker from "../components/PlagiarismChecker";
+import DiffViewer from "../components/DiffViewer";
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -21,8 +23,19 @@ export default function PostDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); 
 
-  // --- NEW STATE FOR PROFESSIONAL UI ---
+  const [plagResult, setPlagResult] = useState(null);
+  const [isPlagLoading, setIsPlagLoading] = useState(false);
+  const [pendingContent, setPendingContent] = useState(null); 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+ 
+  useEffect(() => {
+    if (plagResult || isPlagLoading || pendingContent) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+  }, [plagResult, isPlagLoading, pendingContent]);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -36,27 +49,123 @@ export default function PostDetail() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!res.ok) {
-          if (res.status === 404) throw new Error("Post_Not_Found");
-          if (res.status === 401) throw new Error("Unauthorized_Access");
-          throw new Error("Sync_Failure");
-        }
-
+        if (!res.ok) throw new Error("Sync_Failure");
         const data = await res.json();
         setPost(data);
         setEditedContent(data.content || "");
         setEditedTopic(data.topic || ""); 
       } catch (err) { 
-        console.error("Sync Error:", err);
-        setError(err.message);
+        console.error("Backend Sync Error:", err.message); 
       }
     };
     fetchPost();
   }, [id]);
 
+  const handlePlagiarismCheck = async () => {
+    setIsPlagLoading(true);
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch(`http://localhost:8000/api/blog-posts/${id}/check-plagiarism`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Backend Quota Error Detected:", errorData);
+        setIsPlagLoading(false);
+        return; 
+      }
+      
+      const data = await res.json();
+      setPlagResult(data); 
+    } catch (err) { 
+      console.error("Network/Quota Error in Terminal:", err);
+    } finally { 
+      setIsPlagLoading(false); 
+    }
+  };
+
+  const handleHumanize = async (promptText) => {
+    setIsPlagLoading(true); 
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+      
+      const res = await fetch(`http://localhost:8000/api/blog-posts/${id}/humanize`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ user_prompt: promptText, tone: "balanced" })
+      });
+
+      const data = await res.json();
+
+      if (data && data.rewritten_content) {
+        const scanRes = await fetch(`http://localhost:8000/api/blog-posts/check-text-plagiarism`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({ content: data.rewritten_content }) 
+        });
+
+        const newScanData = await scanRes.json();
+
+        setPendingContent(data.rewritten_content);
+        setPlagResult(newScanData); 
+      }
+    } catch (err) { 
+      console.error("Sync Error in Terminal:", err);
+    } finally { 
+      setIsPlagLoading(false); 
+    }
+  };
+
+  // --- UPDATED: applyNeuralChanges ---
+  const applyNeuralChanges = async () => {
+    try {
+      const auth = getAuth();
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch(`http://localhost:8000/api/blog-posts/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          topic: editedTopic, 
+          content: pendingContent 
+        })
+      });
+
+      if (!response.ok) throw new Error("Database_Update_Failed");
+
+      // 1. Update local state with new content
+      setEditedContent(pendingContent);
+      setPost(prev => ({ ...prev, content: pendingContent }));
+      
+      // This closes the HUD and DiffViewer so the user isn't stuck seeing 0%
+      setPendingContent(null);
+      setPlagResult(null); 
+      
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus(null), 3000);
+      console.log("Changes permanently saved to manuscript vault.");
+
+    } catch (err) {
+      console.error("Persistence Error in Terminal:", err.message);
+      setSaveStatus('error');
+    }
+  };
+
   const handleCommit = async () => {
     setIsSaving(true);
-    setSaveStatus(null);
     try {
         const auth = getAuth();
         const token = await auth.currentUser.getIdToken();
@@ -68,22 +177,18 @@ export default function PostDetail() {
             },
             body: JSON.stringify({ topic: editedTopic, content: editedContent })
         });
-
         if (!response.ok) throw new Error("Update_Failed");
-
         setSaveStatus('success'); 
         setIsEditing(false); 
         setPost({ ...post, topic: editedTopic, content: editedContent }); 
-        
         setTimeout(() => setSaveStatus(null), 3000);
-    } catch (err) {
-        setSaveStatus('error');
-    } finally {
-        setIsSaving(false);
+    } catch (err) { 
+      console.error("Commit Error in Terminal:", err.message);
+    } finally { 
+      setIsSaving(false); 
     }
   };
 
-  // --- ISSUE #15: UPDATED DELETE LOGIC WITH FEEDBACK ---
   const handleConfirmDelete = async () => {
     try {
         const auth = getAuth();
@@ -92,53 +197,21 @@ export default function PostDetail() {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` }
         });
-
-        if (!res.ok) throw new Error("Deletion_Failed");
-
-        // 1. Requirement: Show success confirmation in UI
-        setSaveStatus('deleted'); 
-        
-        // 2. Hide modal
-        setShowDeleteModal(false);
-
-        // 3. Requirement: Redirect to dashboard after showing message
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1500);
-
-    } catch (err) {
-        setSaveStatus('error');
-        setShowDeleteModal(false);
+        if (res.ok) {
+          setSaveStatus('deleted');
+          setTimeout(() => navigate("/dashboard"), 1500);
+        }
+    } catch (err) { 
+      console.error("Deletion Error in Terminal:", err.message);
     }
   };
 
-  if (error) return (
-    <div className="min-h-screen bg-[#F4F9F7] flex flex-col items-center justify-center font-sans p-10">
-      <div className="bg-white border-[3px] border-red-400 rounded-[3rem] p-16 shadow-2xl text-center max-w-2xl">
-        <h2 className="text-4xl font-black text-slate-900 mb-4 italic uppercase tracking-tighter">
-          {error.replace(/_/g, ' ')}
-        </h2>
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mb-8">
-          The requested data could not be retrieved from the manuscript vault.
-        </p>
-        <button onClick={() => navigate("/dashboard")} className="bg-red-500 text-white px-10 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.4em] shadow-lg hover:bg-red-600 transition-all">
-          Return to Dashboard
-        </button>
-      </div>
-    </div>
-  );
-
-  if (!post) return (
-    <div className="min-h-screen bg-[#F4F9F7] flex items-center justify-center font-black text-emerald-800 uppercase tracking-[0.8em] animate-pulse">
-      Loading
-    </div>
-  );
+  if (!post) return <div className="h-screen bg-[#F4F9F7] flex items-center justify-center font-black text-emerald-800 tracking-[0.8em] animate-pulse">Loading</div>;
 
   return (
     <div className="h-screen w-full flex p-4 lg:p-8 font-sans relative overflow-hidden bg-[#f0f4f3]">
-      <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-emerald-300/40 rounded-full blur-[120px] animate-pulse pointer-events-none z-0" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-teal-200/40 rounded-full blur-[120px] pointer-events-none z-0" />
-
+      <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-emerald-300/40 rounded-full blur-[120px] pointer-events-none z-0" />
+      
       <aside className="w-20 hidden xl:flex flex-col items-center py-10 gap-10 bg-white/60 backdrop-blur-xl border border-white rounded-[3rem] shadow-xl z-20 h-fit sticky top-8">
         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-lg border border-emerald-50"><Command size={24} /></div>
         <div className="flex flex-col gap-8 flex-grow">
@@ -150,93 +223,89 @@ export default function PostDetail() {
       </aside>
 
       <main className="flex-grow ml-0 xl:ml-8 flex flex-col gap-6 relative z-10 h-full">
-        <div className="flex-shrink-0 flex items-center justify-between px-8 py-5 bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] shadow-[0_15px_35_rgba(0,0,0,0.05)]">
-          <button onClick={() => navigate("/dashboard")} className="relative overflow-hidden bg-emerald-600 hover:bg-emerald-500 text-white px-10 py-4 rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.4em] transition-all duration-300 shadow-[0_0_25px_rgba(16,185,129,0.4),0_15px_35px_-5px_rgba(5,150,105,0.4)] border border-emerald-400/50 hover:shadow-[0_0_40px_rgba(16,185,129,0.6)] active:scale-95">
-            <span className="relative z-10 flex items-center gap-2"><ArrowLeft size={16} color="white" strokeWidth={3} /> Dashboard</span>
+        <div className="flex-shrink-0 flex items-center justify-between px-8 py-5 bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] shadow-sm">
+          <button onClick={() => navigate("/dashboard")} className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md">
+            Dashboard
           </button>
 
           <div className="flex gap-4">
             <button 
-              onClick={() => setShowDeleteModal(true)}
-              className="bg-red-50 text-red-600 p-3 rounded-2xl border-2 border-red-100 hover:bg-red-500 hover:text-white transition-all active:scale-95"
-              title="Delete Manuscript"
+              onClick={handlePlagiarismCheck}
+              disabled={isPlagLoading}
+              className="bg-emerald-50 text-emerald-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all disabled:opacity-50"
             >
-              <Trash2 size={20} />
+              {isPlagLoading ? "Analyzing..." : "Check Originality"}
             </button>
-
-            <button onClick={() => setIsEditing(!isEditing)} className="flex items-center gap-3 bg-white border-2 border-emerald-500 text-emerald-600 px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-emerald-50 transition-all active:scale-95">
-              {isEditing ? <><BookOpen size={16} /> Read Mode</> : <><Edit3 size={16} /> Edit Mode</>}
+            <button onClick={() => setShowDeleteModal(true)} className="bg-red-50 text-red-600 p-3 rounded-xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18} /></button>
+            <button onClick={() => setIsEditing(!isEditing)} className="bg-white border-2 border-emerald-500 text-emerald-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">
+              {isEditing ? "Read Mode" : "Edit Mode"}
             </button>
-            
-            <button onClick={handleCommit} disabled={isSaving} className="bg-emerald-600 text-white px-10 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
-              {isSaving ? "Syncing..." : <><Zap size={14} className="fill-white" /> Commit Masterpiece</>}
+            <button onClick={handleCommit} disabled={isSaving} className="bg-emerald-600 text-white px-10 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2">
+              <Zap size={14} className="fill-white" /> Commit
             </button>
           </div>
         </div>
 
-        <div className="min-h-[85vh] flex-grow overflow-y-auto pr-2 custom-scrollbar bg-white/95 backdrop-blur-3xl border-[3px] border-emerald-400/10 rounded-[5rem] relative transition-all duration-700 ease-out shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15),0_0_40px_rgba(16,185,129,0.08)] hover:-translate-y-2 hover:shadow-[0_60px_130px_-30px_rgba(0,0,0,0.2),0_0_60px_rgba(16,185,129,0.25)] hover:border-emerald-400/30">
-          <div className="p-10 lg:p-20 min-h-full">
-            {isEditing ? (
-              <ContentEditor 
-                topic={editedTopic} 
-                setTopic={setEditedTopic} 
-                content={editedContent} 
-                setContent={setEditedContent} 
-              />
+        <div className="min-h-[85vh] flex-grow overflow-y-auto pr-2 custom-scrollbar bg-white/95 backdrop-blur-3xl border-[3px] border-emerald-400/10 rounded-[5rem] relative transition-all duration-700 shadow-xl overflow-hidden">
+          {pendingContent ? (
+            <DiffViewer 
+              oldText={post.content} 
+              newText={pendingContent} 
+              onApply={applyNeuralChanges} 
+              onDiscard={() => setPendingContent(null)} 
+            />
+          ) : (
+            (!plagResult && !isPlagLoading) ? (
+               <div className="p-10 lg:p-20 min-h-full ">
+                  {isEditing ? (
+                    <ContentEditor topic={editedTopic} setTopic={setEditedTopic} content={editedContent} setContent={setEditedContent} />
+                  ) : (
+                    <BlogPostView post={{...post, topic: editedTopic, content: editedContent}} />
+                  )}
+               </div>
             ) : (
-              <BlogPostView post={{...post, topic: editedTopic, content: editedContent}} />
-            )}
-          </div>
+              <PlagiarismChecker 
+                result={plagResult} 
+                loading={isPlagLoading} 
+                onClose={() => setPlagResult(null)}
+                onHumanize={handleHumanize}
+              />
+            )
+          )}
         </div>
       </main>
 
-      {/* --- PROFESSIONAL DELETE CONFIRMATION MODAL --- */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border-[3px] border-red-50 animate-in zoom-in-95 duration-300">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-6">
-              <Trash2 size={32} />
-            </div>
-            
-            <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2 ">
-              Delete Manuscript?
-            </h3>
-            <p className="text-slate-500 font-medium leading-relaxed mb-8">
-              This will permanently delete this record from the vault. This action cannot be undone.
-            </p>
-
+          <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95">
+            <Trash2 size={48} className="text-red-500 mb-6" />
+            <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2 ">Delete?</h3>
+            <p className="text-slate-500 text-sm mb-8">This action is permanent.</p>
             <div className="flex gap-4">
-              <button 
-                onClick={() => setShowDeleteModal(false)}
-                className="flex-grow py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all"
-              >
-                No
-              </button>
-              <button 
-                onClick={handleConfirmDelete}
-                className="flex-grow bg-red-500 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-600 transition-all"
-              >
-                Delete Record
-              </button>
+              <button onClick={() => setShowDeleteModal(false)} className="flex-grow py-4 font-black text-[10px] uppercase tracking-widest text-slate-400">No</button>
+              <button onClick={handleConfirmDelete} className="flex-grow bg-red-500 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg">Delete</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- UPDATED DYNAMIC TOAST FEEDBACK --- */}
-      {saveStatus === 'success' && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-2xl animate-bounce z-[100]">Sync Complete</div>
-      )}
-      
-      {saveStatus === 'deleted' && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-red-500 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-2xl animate-bounce z-[100]">Record Successfully Deleted</div>
+      {saveStatus && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-600 to-teal-600
+ text-white px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-2xl animate-bounce z-[100]">
+          {saveStatus === 'success' ? 'Sync Complete' : saveStatus === 'deleted' ? 'Deleted' : 'Error'}
+        </div>
       )}
 
-      {saveStatus === 'error' && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-red-500 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-2xl z-[100]">Neural Sync Failed</div>
-      )}
-
-      <style dangerouslySetInnerHTML={{ __html: `.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #10b98133; border-radius: 10px; }`}} />
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; } 
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #10b98133; border-radius: 10px; }
+        @keyframes scan-pulse {
+          0% { transform: scale(1); opacity: 0.5; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 0.5; }
+        }
+        .animate-scan-pulse { animation: scan-pulse 2s infinite ease-in-out; }
+      `}} />
     </div>
   );
 }
