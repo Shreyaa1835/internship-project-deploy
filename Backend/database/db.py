@@ -3,16 +3,15 @@ import sqlite3
 DB_NAME = "blog_posts.db"
 
 def get_db():
-    # timeout prevents "database is locked" during concurrent polling/writing
     conn = sqlite3.connect(DB_NAME, timeout=20)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_db():
-    """Initialises the database with the full schema required for content generation."""
+    """Initialises the database and ensures all columns exist."""
     db = get_db()
     try:
-        # Added 'content' to store the full AI post and 'created_at' for sorting
         db.execute('''
             CREATE TABLE IF NOT EXISTS blog_posts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,10 +21,20 @@ def init_db():
                 content TEXT, 
                 status TEXT DEFAULT 'RESEARCHING',
                 user_id TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                scheduled_at TEXT
             )
         ''')
         db.commit()
+
+        try:
+            db.execute("SELECT scheduled_at FROM blog_posts LIMIT 1")
+        except sqlite3.OperationalError:
+            print("Detected missing 'scheduled_at' column. Migrating...")
+            db.execute("ALTER TABLE blog_posts ADD COLUMN scheduled_at TEXT")
+            db.commit()
+            print("✅ Migration successful.")
+
     finally:
         db.close()
 
@@ -56,7 +65,6 @@ def update_db_outline(post_id: int, outline_json: str):
 
 def get_post_for_generation(post_id: int):
     db = get_db()
-    # Retrieve both topic and outline for better context
     post = db.execute(
         "SELECT topic, outline FROM blog_posts WHERE id = ?", 
         (post_id,)
@@ -79,7 +87,6 @@ def update_db_content(post_id: int, generated_text: str):
 def get_user_posts(user_id: str):
     db = get_db()
     try:
-        # Use * to see if it works without specific column naming first
         cursor = db.execute(
             "SELECT * FROM blog_posts WHERE user_id = ? ORDER BY id DESC", 
             (user_id,)
@@ -91,3 +98,25 @@ def get_user_posts(user_id: str):
         return []
     finally:
         db.close()
+
+
+def upgrade_database():
+    
+    conn = sqlite3.connect('blog_database.db') 
+    cursor = conn.cursor()
+    
+    try:
+        print("Checking for 'scheduled_at' column...")
+        cursor.execute("ALTER TABLE blog_posts ADD COLUMN scheduled_at TEXT")
+        conn.commit()
+        print("✅ Success! 'scheduled_at' column added to blog_posts table.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e).lower():
+            print("ℹ️ Column already exists.")
+        else:
+            print(f"❌ Error: {e}")
+    finally:
+        conn.close()
+
+if __name__ == "__main__":
+    upgrade_database()

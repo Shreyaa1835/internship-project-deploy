@@ -1,12 +1,15 @@
 import os
+import io
 import sqlite3
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Header, Request, Query
+from fastapi.responses import Response , StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import firebase_admin
 from firebase_admin import auth as firebase_auth, credentials
 from typing import Optional
+from fpdf import FPDF
 
 from database.db import (
     create_blog_post,
@@ -17,7 +20,6 @@ from database.db import (
 from services.researcher import perform_research_and_outline
 from services.writer import generate_blog_content
 
-# --- IMPORT NEW MODULAR SERVICES ---
 from services.plagiarism import analyze_content_patterns  # LLM-1
 from services.humanizer import humanize_full_content   # LLM-2
 
@@ -62,6 +64,9 @@ class BlogPostRequest(BaseModel):
 class UpdatePostRequest(BaseModel):
     topic: str
     content: str
+
+class ScheduleRequest(BaseModel):
+    scheduledAt: str
 
 # ---------------- HELPERS ----------------
 def update_blog_post(post_id: int, user_id: str, topic: str, content: str):
@@ -112,6 +117,64 @@ def search_posts_in_db(query: str, user_id: str):
     finally:
         db.close()
 
+def update_scheduled_date(post_id: int, user_id: str, scheduled_at: str):
+    db = get_db()
+    try:
+        db.execute(
+            "UPDATE blog_posts SET scheduled_at = ?, status = 'Scheduled' WHERE id = ? AND user_id = ?",
+            (scheduled_at, post_id, user_id)
+        )
+        db.commit()
+    finally:
+        db.close()
+
+def clean_for_pdf(text: str) -> str:
+    if not text:
+        return ""
+    replacements = {
+        "\u2013": "-",
+        "\u2014": "-", 
+        "\u2018": "'", 
+        "\u2019": "'", 
+        "\u201c": '"', 
+        "\u201d": '"', 
+        "\u2022": "*", 
+    }
+    for unicode_char, ascii_char in replacements.items():
+        text = text.replace(unicode_char, ascii_char)
+    return text.encode("latin-1", "ignore").decode("latin-1")
+
+def format_post_content(post, format_type: str):
+    title = post['topic']
+    content = post['content'] or "No content available."
+    
+    if format_type.lower() == "pdf":
+        safe_title = clean_for_pdf(title)
+        safe_content = clean_for_pdf(content)
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(0, 10, safe_title, ln=True, align='C')
+        pdf.ln(10)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, safe_content) 
+        
+        pdf_bytes = pdf.output(dest='S')
+        buffer = io.BytesIO(pdf_bytes)
+        buffer.seek(0)
+        return buffer, "application/pdf", f"{safe_title}.pdf"
+    
+    elif format_type.lower() == "txt":
+        return f"TOPIC: {title}\n\n{content}", "text/plain", f"{title}.txt"
+
+    elif format_type.lower() == "markdown":
+        markdown_body = f"# {title}\n\n{content}"
+        return markdown_body, "text/markdown", f"{title}.md"
+    
+    else: 
+        html = f"<html><body><h1>{title}</h1><p>{content.replace('\n', '<br>')}</p></body></html>"
+        return html, "text/html", f"{title}.html"
 # ---------------------------------------------------------
 # 1. STATIC ROUTES 
 # ---------------------------------------------------------
@@ -148,6 +211,44 @@ async def create_post(
 # ---------------------------------------------------------
 # 2. DYNAMIC ID ROUTES 
 # ---------------------------------------------------------
+
+@app.put("/api/blog-posts/{post_id}/schedule")
+async def schedule_blog_post(
+    post_id: int, 
+    request: ScheduleRequest, 
+    user_id: str = Depends(get_current_user)
+):
+    update_scheduled_date(post_id, user_id, request.scheduledAt)
+    return {"status": "success", "scheduledAt": request.scheduledAt}
+
+@app.get("/api/blog-posts/{post_id}/export")
+async def export_blog_post(
+    post_id: int, 
+    format: str = "markdown", 
+    user_id: str = Depends(get_current_user)
+):
+    db = get_db()
+    try:
+        row = db.execute("SELECT * FROM blog_posts WHERE id = ? AND user_id = ?", (post_id, user_id)).fetchone()
+        if not row: 
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        formatted_content, media_type, filename = format_post_content(dict(row), format)
+
+        if format.lower() == "pdf":
+            return StreamingResponse(
+                formatted_content,
+                media_type=media_type,
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+        else:
+            return Response(
+                content=formatted_content, 
+                media_type=media_type, 
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+    finally: 
+        db.close()
 
 @app.get("/api/blog-posts/{post_id}")
 async def get_post(post_id: int, user_id: str = Depends(get_current_user)):
