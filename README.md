@@ -38,6 +38,20 @@ A web application that helps content creators generate comprehensive blog posts 
 - Simple text processing for plagiarism checking
 
 ---
+## Testing & Verification
+
+End-to-end manual testing of the complete application flow has been completed.
+
+📄 **Detailed testing documentation:**  
+[TESTING.md](./TESTING.md)
+
+This document includes:
+- Pages & routes verification
+- API endpoints audit
+- Authentication & protected routes testing
+- CRUD operations validation
+- Error handling scenarios
+- UI/UX and responsive testing
 
 ## Features
 
@@ -188,8 +202,9 @@ blog-post-generator-with-research/
 
 **Issue #19: Final Testing**
 - Complete application flow verification
-- End-to-end testing documentation
+- End-to-end testing documentation ([TESTING.md](./TESTING.md))
 - User interaction flow documentation
+
 
 ---
 
