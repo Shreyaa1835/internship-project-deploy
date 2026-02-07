@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+import { useNavigate } from "react-router-dom"; 
 import { getAuth } from "firebase/auth";
 
-// Helper function to calculate time distance accurately by forcing UTC comparison
 const getRelativeTime = (timestamp) => {
   if (!timestamp) return "Just now";
   
@@ -24,13 +23,12 @@ const getRelativeTime = (timestamp) => {
 
 export default function BlogPostCard({ post: initialPost }) {
   const [post, setPost] = useState(initialPost);
-  const navigate = useNavigate(); // Initialize the navigate hook
+  const navigate = useNavigate(); 
   
   const isWriting = post.status === 'WRITING' || post.status === 'RESEARCHING';
   const isPublished = post.status === 'Published';
   const isError = post.status === 'ERROR';
 
-  // --- SECURE LIVE POLLING LOGIC ---
   useEffect(() => {
     let interval;
     const auth = getAuth();
@@ -66,10 +64,9 @@ export default function BlogPostCard({ post: initialPost }) {
     return () => clearInterval(interval);
   }, [isWriting, post.id]);
 
-  // Handler to navigate to the detail page
   const handleNavigation = () => {
     if (!isWriting) {
-      navigate(`/blog-posts/${post.id}`); // Requirement: Dynamic route navigation
+      navigate(`/blog-posts/${post.id}`); 
     }
   };
 
@@ -91,10 +88,11 @@ export default function BlogPostCard({ post: initialPost }) {
           <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full shadow-sm flex items-center gap-2">
             <span className={`h-2 w-2 rounded-full ${
               isWriting ? 'bg-blue-500 animate-ping' : 
-              isError ? 'bg-red-500' : 'bg-emerald-500'
+              isError ? 'bg-red-500' : 
+              post.status === 'Scheduled' ? 'bg-amber-500' : 'bg-emerald-500'
             }`} />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
-              {isWriting ? "Generating..." : post.status}
+              {isWriting ? "Drafting..." : post.status === 'Scheduled' ? 'Scheduled' : post.status === 'Published' ? 'Published' : 'Draft'}
             </span>
           </div>
         </div>
@@ -122,7 +120,7 @@ export default function BlogPostCard({ post: initialPost }) {
           </span>
           
           <button 
-            onClick={handleNavigation} // Trigger navigation on click
+            onClick={handleNavigation} 
             disabled={isWriting}
             className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
               isWriting 

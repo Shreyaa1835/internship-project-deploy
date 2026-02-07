@@ -33,12 +33,9 @@ export default function BlogPostView({ post }) {
   return (
     <div className="flex flex-col lg:grid lg:grid-cols-12 gap-16 lg:gap-24 animate-in fade-in slide-in-from-bottom-10 duration-1000">
       
-      {/* COLUMN 1: Editorial Manuscript (Left Side) */}
       <div className="lg:col-span-7 space-y-16 text-left">
         <header className="space-y-10">
-          <div className="inline-flex items-center gap-4 px-6 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-[0.4em]">
-            <Zap size={14} className="fill-emerald-600" /> Neural_Manuscript_V.1
-          </div>
+          
           
           <h1 className="text-6xl md:text-7xl lg:text-8xl font-black text-slate-900 tracking-tighter leading-[1.1] italic">
             {post?.topic}
@@ -65,7 +62,6 @@ export default function BlogPostView({ post }) {
         </article>
       </div>
 
-      {/* COLUMN 2: Neural Path HUD (Fixed Sidebar) */}
       <aside className="lg:col-span-5 relative">
         <div className="sticky top-10 space-y-10 h-fit">
           
@@ -82,7 +78,7 @@ export default function BlogPostView({ post }) {
           ">
             <div className="flex items-center justify-between mb-16">
               <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.6em] flex items-center gap-5">
-                <BrainCircuit size={28} className="text-emerald-600" /> Neural_Nodes
+                <BrainCircuit size={28} className="text-emerald-600" /> Outline
               </h3>
               <div className="w-4 h-4 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_20px_#34d399]" />
             </div>

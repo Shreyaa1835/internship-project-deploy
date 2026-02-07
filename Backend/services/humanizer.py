@@ -4,7 +4,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
 
-# LLM-2: Content Refinement Engine
+
 llm_rewriter = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash-lite",
     temperature=0.85, 

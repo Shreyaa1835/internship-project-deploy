@@ -7,15 +7,14 @@ export default function DiffViewer({ oldText, newText, onApply, onDiscard }) {
   return (
     <div className="absolute inset-0 z-[50] bg-white flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
       
-      {/* HEADER: Unified with the Manuscript Theme */}
       <div className="p-8 border-b flex justify-between items-center bg-slate-50/80 backdrop-blur-md sticky top-0 z-20">
         <div className="flex items-center gap-5">
-          <div className="p-4 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-[1.2rem] shadow-lg shadow-emerald-100">
+          <div className="p-4 bg-gradient-to-br from-emerald-700 to-teal-600 text-white rounded-[1.2rem] shadow-lg shadow-emerald-100">
             <ArrowRightLeft size={22} className="animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-black italic tracking-tighter uppercase text-slate-800 flex items-center gap-2">
-            Refinement Review
+            <h2 className="text-xl font-black  tracking-tighter uppercase text-slate-800 flex items-center gap-2">
+            Preview
             </h2>
             <p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] mt-1 italic">
               
@@ -35,15 +34,14 @@ export default function DiffViewer({ oldText, newText, onApply, onDiscard }) {
             className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl bg-gradient-to-r from-emerald-600 to-teal-600
  hover:bg-emerald-600 transition-all flex items-center gap-2 active:scale-95"
           >
-            <Check size={16} /> Apply Masterpiece
+            <Check size={16} /> Apply Changes
           </button>
         </div>
       </div>
 
-      {/* CONTENT COMPARISON GRID */}
       <div className="flex-grow flex flex-col lg:flex-row overflow-hidden bg-[#fcfdfd]">
         
-        {/* LEFT SIDE: Original (Red/Discarded style) */}
+        {/* LEFT SIDE: Original  */}
         <div className="flex-1 border-r border-slate-100 flex flex-col overflow-hidden group/original">
           <div className="p-6 bg-slate-100/50 border-b border-slate-100 flex items-center gap-3">
              <FileText size={14} className="text-slate-400" />
@@ -56,7 +54,7 @@ export default function DiffViewer({ oldText, newText, onApply, onDiscard }) {
           </div>
         </div>
 
-        {/* RIGHT SIDE: Humanized (Emerald/Proposed style) */}
+        {/* RIGHT SIDE: Humanized  */}
         <div className="flex-1 flex flex-col overflow-hidden group/humanized shadow-[-20px_0_40px_-20px_rgba(0,0,0,0.03)]">
           <div className="p-6 bg-emerald-50/30 border-b border-emerald-50 flex items-center gap-3">
              <Sparkles size={14} className="text-emerald-500" />
@@ -70,7 +68,7 @@ export default function DiffViewer({ oldText, newText, onApply, onDiscard }) {
         </div>
       </div>
 
-      {/* FOOTER: Visual metadata */}
+      {/* FOOTER:  */}
       <div className="px-8 py-4 bg-white border-t border-slate-100 flex justify-between items-center">
          <div className="flex items-center gap-6">
             <div className="flex flex-col">

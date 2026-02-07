@@ -156,7 +156,6 @@ export default function PostDetail() {
         
         <div className="flex flex-col gap-8 flex-grow">
           <Home size={22} className="text-slate-400 hover:text-emerald-500 cursor-pointer transition-all" onClick={() => navigate("/dashboard")} />
-          <FileText size={22} className="text-emerald-600" />
           
           <Calendar 
             size={22} 
@@ -170,9 +169,7 @@ export default function PostDetail() {
             onClick={() => setPinnedPanel(pinnedPanel === 'export' ? null : 'export')} 
           />
 
-          <Activity size={22} className="text-slate-400 hover:text-emerald-500 cursor-pointer transition-all" />
         </div>
-        <Settings size={22} className="text-slate-400 hover:text-emerald-500 cursor-pointer transition-all" />
       </aside>
 
       <main className="flex-grow ml-0 xl:ml-8 flex flex-col gap-6 relative z-10 h-full">

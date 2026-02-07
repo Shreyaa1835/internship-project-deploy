@@ -20,8 +20,8 @@ from database.db import (
 from services.researcher import perform_research_and_outline
 from services.writer import generate_blog_content
 
-from services.plagiarism import analyze_content_patterns  # LLM-1
-from services.humanizer import humanize_full_content   # LLM-2
+from services.plagiarism import analyze_content_patterns  
+from services.humanizer import humanize_full_content   
 
 # ---------------- FIREBASE INIT ----------------
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -329,16 +329,26 @@ async def delete_post(
         db.close()
 
 @app.post("/api/blog-posts/{post_id}/check-plagiarism")
-async def check_plagiarism(post_id: int, user_id: str = Depends(get_current_user)):
+async def check_plagiarism(
+    post_id: int,
+    user_id: str = Depends(get_current_user)
+):
     db = get_db()
     try:
-        row = db.execute("SELECT content FROM blog_posts WHERE id=? AND user_id=?", (post_id, user_id)).fetchone()
+        row = db.execute(
+            "SELECT content FROM blog_posts WHERE id=? AND user_id=?",
+            (post_id, user_id)
+        ).fetchone()
+
         if not row or not row["content"]:
             raise HTTPException(status_code=404, detail="Content not found")
+
         result = await analyze_content_patterns(row["content"])
         return result
+
     finally:
         db.close()
+
 
 @app.post("/api/blog-posts/{post_id}/humanize")
 async def humanize_post(post_id: int, request: Request, user_id: str = Depends(get_current_user)):

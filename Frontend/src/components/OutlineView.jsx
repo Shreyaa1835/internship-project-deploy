@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuth } from "firebase/auth"; // Import Firebase Auth
+import { getAuth } from "firebase/auth"; 
 import { CheckCircle2, ChevronRight, X, Loader2 } from "lucide-react";
 
 export default function OutlineView({ outline, postId, onCancel }) {
@@ -20,20 +20,17 @@ export default function OutlineView({ outline, postId, onCancel }) {
 
     setIsApproving(true);
     try {
-      // Requirement: Extract the Firebase ID token for authentication
       const token = await user.getIdToken();
 
-      // Call the generation endpoint with secure headers
       const response = await fetch(`http://localhost:8000/api/blog-posts/${postId}/generate`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`, // Token-based authentication
+          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         }
       });
 
       if (response.ok) {
-        // Navigate back to dashboard where polling will show the "WRITING" status
         navigate("/dashboard");
       } else {
         const errorData = await response.json();
@@ -48,16 +45,12 @@ export default function OutlineView({ outline, postId, onCancel }) {
 
   return (
     <div className="relative w-full h-full group">
-      {/* GLOW EFFECT: Background breathing glow */}
       <div className="absolute -inset-1.5 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-[3.2rem] blur-xl opacity-20 group-hover:opacity-40 animate-pulse transition duration-1000"></div>
 
-      {/* MAIN CARD: Enhanced glassmorphism */}
       <div className="relative bg-white/90 backdrop-blur-2xl p-8 lg:p-10 rounded-[3rem] shadow-[0_20px_50px_-12px_rgba(16,185,129,0.2)] border border-emerald-100/50 flex flex-col h-full animate-in zoom-in-95 duration-500 overflow-hidden">
         
-        {/* INNER RADIANT GLOW */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-emerald-100/30 to-transparent pointer-events-none" />
 
-        {/* Header Section */}
         <div className="flex items-center justify-between mb-6 relative z-10">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-500 p-2 rounded-xl text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]">
@@ -75,7 +68,6 @@ export default function OutlineView({ outline, postId, onCancel }) {
           </button>
         </div>
 
-        {/* Sequential Line Reveal Area */}
         <div className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar max-h-[400px] relative z-10">
           {data.sections?.map((sec, i) => (
             <div
@@ -105,7 +97,6 @@ export default function OutlineView({ outline, postId, onCancel }) {
           ))}
         </div>
 
-        {/* Approve Button: Elevated Glow with Loading State */}
         <button
           onClick={handleApprove}
           disabled={isApproving}

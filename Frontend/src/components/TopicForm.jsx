@@ -36,9 +36,8 @@ export default function TopicForm() {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    topic,      // keep topic
-    keywords    // keep keywords
-    // REMOVE userId
+    topic,      
+    keywords   
   }),
 });
 

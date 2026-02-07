@@ -20,7 +20,6 @@ export default function ContentEditor({ topic, setTopic, content, setContent }) 
         </div>
       </div>
 
-      {/* Requirement: Title/Topic Editor */}
       <div className="px-8 flex flex-col gap-2">
         <div className="flex items-center gap-2">
             <Type size={14} className="text-emerald-500" />
@@ -35,7 +34,7 @@ export default function ContentEditor({ topic, setTopic, content, setContent }) 
         />
       </div>
 
-      {/* Main Textarea Container */}
+      {/* Main Textarea */}
       <div className="relative flex-grow group">
         <div className="absolute inset-0 bg-emerald-400/5 rounded-[4rem] blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
         

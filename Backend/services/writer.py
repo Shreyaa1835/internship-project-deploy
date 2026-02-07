@@ -8,7 +8,6 @@ load_dotenv()
 
 def generate_blog_content(post_id: int):
     try:
-        # 🔐 Step 0: Validate Gemini API Key
         if not os.getenv("GOOGLE_KEY"):
             print("❌ ERROR: Missing GOOGLE_KEY in .env")
             raise ValueError("Missing Google Gemini API Key")
@@ -17,13 +16,11 @@ def generate_blog_content(post_id: int):
         if not post or not post['outline']:
             raise ValueError("Outline data missing")
 
-        # 🧠 Gemini LLM with API key
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-lite",
             api_key=os.getenv("GOOGLE_KEY")
         )
         
-        # ✍️ Structuring the prompt for long-form content
         prompt = ChatPromptTemplate.from_template(
             "You are a professional blog writer. Topic: {topic}. "
             "Outline: {outline}. "
@@ -38,10 +35,8 @@ def generate_blog_content(post_id: int):
             "outline": post['outline']
         })
 
-        # 💾 Update the database with the final content
         update_db_content(post_id, response.content)
         print(f"✅ Success: Content generated for Post {post_id}")
 
     except Exception as e:
         print(f"❌ Generation Error: {str(e)}")
-        # In a real app, update DB status to 'ERROR'

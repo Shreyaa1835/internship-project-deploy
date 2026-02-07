@@ -11,7 +11,7 @@ const Footer = () => {
           <a href="#" className="hover:text-emerald-400 transition">Terms of Service</a>
         </div>
         <div className="text-sm text-emerald-500/80">
-          © 2026 AI Blog Post All rights reserved.
+          © 2026 BlogGenAI rights reserved.
         </div>
       </div>
     </footer>

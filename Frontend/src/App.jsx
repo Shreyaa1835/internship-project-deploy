@@ -6,7 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import CreatePost from "./pages/CreatePost";
 import ProtectedRoute from "./components/ProtectedRoute";
 import app from "./firebase/firebaseConfig";
-import PostDetail from "./pages/PostDetail"; // Imported for Issue #13
+import PostDetail from "./pages/PostDetail"; 
 
 console.log("Firebase App:", app);
 
@@ -38,7 +38,6 @@ function App() {
           }
         />
 
-        {/* Dynamic Post Detail Route - Requirement for Issue #13 */}
         <Route
           path="/blog-posts/:id"
           element={

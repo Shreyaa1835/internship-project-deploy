@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuth } from "firebase/auth"; // Import Firebase Auth
-import { Sparkles, ArrowLeft, Hash, Layout } from "lucide-react";
+import { getAuth } from "firebase/auth"; 
+import { Sparkles, ArrowLeft, Hash, Layout, FileText } from "lucide-react"; 
 import OutlineView from "../components/OutlineView";
 
 export default function CreatePost() {
@@ -18,19 +18,17 @@ export default function CreatePost() {
   const auth = getAuth();
   const user = auth.currentUser;
 
-  // --- POLLING LOGIC WITH TOKEN AUTH ---
   useEffect(() => {
     let interval;
     if (status === "researching" && postId && user) {
       interval = setInterval(async () => {
         try {
-          // Requirement: GET fresh token for secure background status checks
           const token = await user.getIdToken();
           
           const response = await fetch(`http://localhost:8000/api/blog-posts/${postId}`, {
             method: "GET",
             headers: {
-              "Authorization": `Bearer ${token}` // Token-based Auth to prevent 401s
+              "Authorization": `Bearer ${token}` 
             }
           });
           
@@ -39,7 +37,6 @@ export default function CreatePost() {
           
           const data = await response.json();
           
-          // Logic to handle research status transitions
           if (data.status === "OUTLINE_READY") {
             try {
               let rawOutline = data.outline;
@@ -75,7 +72,6 @@ export default function CreatePost() {
     return () => clearInterval(interval);
   }, [status, postId, user]);
 
-  // --- SUBMIT LOGIC WITH TOKEN AUTH ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!topic.trim()) {
@@ -93,19 +89,17 @@ export default function CreatePost() {
     setStatus("researching"); 
 
     try {
-      // Requirement: Extract userId from Firebase token on Backend
       const token = await user.getIdToken();
 
       const response = await fetch("http://localhost:8000/api/blog-posts", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // Secure header for POST
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ 
           topic, 
           keywords
-          // Note: userId is extracted from token by FastAPI
         }),
       });
 
@@ -142,17 +136,27 @@ export default function CreatePost() {
       </div>
 
       <div className="relative z-10 w-full max-w-5xl flex flex-col items-center">
-        <div className={`grid lg:grid-cols-2 gap-12 items-center w-full transition-all duration-700`}>
+        <div className={`grid lg:grid-cols-2 gap-12 items-start w-full transition-all duration-700`}>
           
           {/* LEFT CONTENT */}
-          <div className="space-y-6 text-left lg:pr-10">
-            <div className="w-16 h-16 bg-white border border-emerald-100 rounded-2xl flex items-center justify-center text-[#2ecc91] shadow-md">
-              <Sparkles size={32} />
+          <div className="space-y-6 text-left lg:pr-10 lg:pt-10">
+            <div className="relative w-20 h-20 mb-8">
+              <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full"></div>
+              <div className="relative w-full h-full bg-white border border-emerald-100 rounded-[1.5rem] flex items-center justify-center text-[#2ecc91] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+                <div className="relative">
+                  <FileText size={38} strokeWidth={1.5} className="text-emerald-600/80" />
+                  <Sparkles size={18} className="absolute -top-2.5 -right-2.5 text-emerald-400 fill-emerald-400 animate-pulse" />
+                  <div className="absolute -bottom-1 -right-2 w-6 h-6 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                    <div className="w-1 h-3 bg-white rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+              </div>
             </div>
+
             <h1 className="text-6xl font-black text-slate-900 tracking-tighter leading-tight">
               Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">Masterpieces</span> with AI.
             </h1>
-            <p className="text-slate-600 text-lg font-medium leading-relaxed">
+            <p className="text-slate-600 text-lg font-medium leading-relaxed max-w-md">
               Transform your ideas into professionally written blog posts instantly using our advanced AI workspace.
             </p>
           </div>
@@ -165,7 +169,7 @@ export default function CreatePost() {
               
               {/* RESEARCHING OVERLAY */}
               {status === "researching" && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-[3rem]">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mb-4"></div>
                   <p className="font-black text-emerald-600 uppercase tracking-widest text-sm text-center px-6">
                     AI is researching and structuring your outline...
@@ -211,7 +215,7 @@ export default function CreatePost() {
                     loading ? "bg-slate-300 cursor-not-allowed" : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105"
                   }`}
                 >
-                  {loading ? "Creating..." : "Generate Post"}
+                  {loading ? "Creating..." : "Generate Outline"}
                 </button>
               </form>
             </div>

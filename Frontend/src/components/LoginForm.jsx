@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase/firebaseConfig.js"; // Correct import
+import { auth } from "../firebase/firebaseConfig.js"; 
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -14,7 +14,7 @@ export default function LoginForm() {
     e.preventDefault();
     let formErrors = {};
 
-    // Basic validation
+   
     if (!email) formErrors.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(email)) formErrors.email = "Invalid email address";
 
@@ -28,12 +28,11 @@ export default function LoginForm() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log("Login successful:", userCredential.user);
 
-      // --- THE UPDATE: Save email to localStorage for the Dashboard greeting ---
       localStorage.setItem("userEmail", email); 
 
       setEmail("");
       setPassword("");
-      navigate("/dashboard"); // Redirect after login
+      navigate("/dashboard"); 
     } catch (error) {
       console.error("Login error:", error);
       if (error.code === "auth/user-not-found") {

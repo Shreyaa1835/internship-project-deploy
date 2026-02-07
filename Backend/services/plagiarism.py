@@ -1,45 +1,80 @@
-import os, json, re
+import os
+import json
+import re
 from dotenv import load_dotenv
+from fastapi import HTTPException
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 
 load_dotenv()
 
 llm_checker = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash-lite", 
-    temperature=0,
+    model="gemini-2.5-flash-lite",
+    temperature=0.2,  
     google_api_key=os.getenv("plag_key")
 )
 
 async def analyze_content_patterns(content: str):
-    """Stage 1: Calibrated Neural Pattern Analysis."""
+    """Plagiarism Scanner – PromptTemplate Safe"""
+
     template = """
-    Evaluate the following manuscript for AI-pattern similarity and Originality.
-    
-    SCORING CALIBRATION:
-    - 80-100%: Contains robotic hooks ('At its core'), formulaic summaries ('In conclusion'), and lacks first-person 'I/My' perspective.
-    - 30-70%: Informative but standard structural flow.
-    - 0-25%: High presence of personal anecdotes, non-linear thoughts, and informal human transitions.
-    
-    CRITICAL: If the text avoids generic AI transitions and uses a distinct personal voice, you MUST award a score below 25%.
+Evaluate the following manuscript for AI-pattern similarity and originality.
 
-    Return JSON only:
-    {{
-      "overall_similarity_score": <int>,
-      "risk_level": "low | medium | high",
-      "analysis_summary": "Identify if specific AI markers were removed or if personal anecdotes were added."
-    }}
+SCORING RULES (STRICT):
+- Return an INTEGER from 0 to 100
+- Do NOT include % symbol
+- Do NOT include text outside JSON
 
-    Content: {content}
-    """
-    
-    prompt = PromptTemplate(template=template, input_variables=["content"])
+Return ONLY valid JSON in this exact format:
+{{
+  "overall_similarity_score": 0,
+  "risk_level": "low | medium | high",
+  "analysis_summary": "short explanation"
+}}
+
+Content:
+{content}
+"""
+
+    prompt = PromptTemplate(
+        template=template,
+        input_variables=["content"]
+    )
+
     chain = prompt | llm_checker
 
+    response = await chain.ainvoke({"content": content})
+    raw = getattr(response, "content", "").strip()
+
+    print("\n====== RAW GEMINI OUTPUT ======")
+    print(raw)
+    print("================================\n")
+
     try:
-        response = await chain.ainvoke({"content": content})
-        raw_text = getattr(response, "content", "")
-        clean_json = re.sub(r'```json|```', '', raw_text).strip()
-        return json.loads(clean_json)
+        match = re.search(r"\{[\s\S]*\}", raw)
+        if not match:
+            raise ValueError("No JSON found in AI response")
+
+        data = json.loads(match.group())
+
+        if "overall_similarity_score" not in data:
+            raise KeyError("overall_similarity_score missing")
+
+        score = int(data["overall_similarity_score"])
+        score = max(0, min(100, score))
+
+        return {
+            "overall_similarity_score": score,
+            "risk_level": data.get("risk_level", "low"),
+            "analysis_summary": data.get("analysis_summary", "")
+        }
+
     except Exception as e:
-        return {"overall_similarity_score": 0, "risk_level": "low", "analysis_summary": f"Scan Error: {str(e)}"}
+        print("\n❌ PLAGIARISM SCAN ERROR ❌")
+        print("ERROR:", e)
+        print("RAW OUTPUT:", raw)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Plagiarism scan failed – see backend logs"
+        )

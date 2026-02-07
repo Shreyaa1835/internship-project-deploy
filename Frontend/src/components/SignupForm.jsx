@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import app from "../firebase/firebaseConfig"; // Make sure this path is correct
+import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import app from "../firebase/firebaseConfig";
 
-export default function SignupForm() {
+export default function SignupForm({ setNotification }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
@@ -14,33 +14,32 @@ export default function SignupForm() {
     e.preventDefault();
     let formErrors = {};
 
-    // Basic validation
     if (!email) formErrors.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(email)) formErrors.email = "Invalid email address";
-
     if (!password) formErrors.password = "Password is required";
 
     setErrors(formErrors);
     if (Object.keys(formErrors).length > 0) return;
 
-    // Firebase signup
     setLoading(true);
     const auth = getAuth(app);
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("Signup successful:", userCredential.user);
-      alert("Account created successfully!");
-      navigate("/login"); // Redirect to login page
+      await createUserWithEmailAndPassword(auth, email, password);
+      await signOut(auth);
+
+      setNotification({ type: "success", message: "Account created successfully!" });
+
+      setTimeout(() => {
+        setNotification(null);
+        navigate("/login");
+      }, 2500);
     } catch (error) {
-      console.error("Signup error:", error);
       if (error.code === "auth/email-already-in-use") {
         setErrors({ email: "Email already exists" });
-      } else if (error.code === "auth/weak-password") {
-        setErrors({ password: "Password should be at least 6 characters" });
-      } else if (error.code === "auth/invalid-email") {
-        setErrors({ email: "Invalid email format" });
       } else {
-        alert("Signup failed: " + error.message);
+        setNotification({ type: "error", message: "Signup failed: " + error.message });
+        setTimeout(() => setNotification(null), 4000);
       }
     } finally {
       setLoading(false);
@@ -55,60 +54,69 @@ export default function SignupForm() {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Email */}
         <div>
-          <label className="block text-gray-700 mb-1">Email</label>
+          <label className="block text-gray-700 mb-1 font-bold text-xs uppercase tracking-widest">
+            Email
+          </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
             placeholder="you@example.com"
           />
-          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          {errors.email && (
+            <p className="text-red-500 text-[10px] font-black uppercase mt-1 ml-1">
+              {errors.email}
+            </p>
+          )}
         </div>
 
-        {/* Password */}
         <div>
-          <label className="block text-gray-700 mb-1">Password</label>
+          <label className="block text-gray-700 mb-1 font-bold text-xs uppercase tracking-widest">
+            Password
+          </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            placeholder="Enter your password"
+            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+            placeholder="••••••••"
           />
-          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          {errors.password && (
+            <p className="text-red-500 text-[10px] font-black uppercase mt-1 ml-1">
+              {errors.password}
+            </p>
+          )}
         </div>
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
-          className={`w-full py-2 rounded-xl font-bold text-white shadow-md transition-all ${
-            loading ? "bg-gray-400 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-600"
+          className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-[0.2em] text-white shadow-xl transition-all active:scale-95 ${
+            loading
+              ? "bg-slate-300 cursor-not-allowed"
+              : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"
           }`}
         >
-          {loading ? "Signing Up..." : "Sign Up"}
+          {loading ? "Initializing..." : "Create Account"}
         </button>
       </form>
 
-      {/* Login Link */}
-      <p className="mt-3 text-sm text-center text-gray-600">
-        Already have an account?{" "}
-        <Link to="/login" className="text-emerald-600 hover:underline">
+      <p className="mt-6 text-xs text-center text-slate-400 font-bold uppercase tracking-widest">
+        Have an account?{" "}
+        <Link to="/login" className="text-emerald-600 hover:text-emerald-700 underline underline-offset-4">
           Login
         </Link>
       </p>
 
-      {/* Animation */}
       <style>{`
         @keyframes fadeIn {
-          0% { opacity: 0; transform: translateY(20px); }
+          0% { opacity: 0; transform: translateY(10px); }
           100% { opacity: 1; transform: translateY(0); }
         }
         .animate-fadeIn {
-          animation: fadeIn 1s forwards;
+          animation: fadeIn 0.6s forwards;
         }
       `}</style>
     </div>

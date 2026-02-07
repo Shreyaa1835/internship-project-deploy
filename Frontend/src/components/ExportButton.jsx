@@ -26,7 +26,7 @@ export default function ExportButton({ postId, content, topic, onClose }) {
       const link = document.createElement('a');
       link.href = url;
       const extension = format === 'markdown' ? 'md' : format;
-      link.setAttribute('download', `NEURAL_MANUSCRIPT_${Date.now()}.${extension}`);
+      link.setAttribute('download', `MANUSCRIPT_${Date.now()}.${extension}`);
       document.body.appendChild(link);
       link.click();
       
