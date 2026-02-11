@@ -10,6 +10,7 @@ import firebase_admin
 from firebase_admin import auth as firebase_auth, credentials
 from typing import Optional
 from fpdf import FPDF
+import json
 
 from database.db import (
     create_blog_post,
