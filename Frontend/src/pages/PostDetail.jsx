@@ -43,7 +43,7 @@ export default function PostDetail() {
         const user = auth.currentUser;
         if (!user) return;
         const token = await user.getIdToken();
-        const res = await fetch(`http://localhost:8000/api/blog-posts/${id}`, {
+        const res = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Sync_Failure");
@@ -63,7 +63,7 @@ export default function PostDetail() {
     try {
       const auth = getAuth();
       const token = await auth.currentUser.getIdToken();
-      const res = await fetch(`http://localhost:8000/api/blog-posts/${id}/check-plagiarism`, {
+      const res = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${id}/check-plagiarism`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -78,7 +78,7 @@ export default function PostDetail() {
     try {
       const auth = getAuth();
       const token = await auth.currentUser.getIdToken();
-      const res = await fetch(`http://localhost:8000/api/blog-posts/${id}/humanize`, {
+      const res = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${id}/humanize`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_prompt: promptText, tone: "balanced" })
@@ -92,7 +92,7 @@ export default function PostDetail() {
     try {
       const auth = getAuth();
       const token = await auth.currentUser.getIdToken();
-      const response = await fetch(`http://localhost:8000/api/blog-posts/${id}`, {
+      const response = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ topic: editedTopic, content: pendingContent })
@@ -112,7 +112,7 @@ export default function PostDetail() {
     try {
         const auth = getAuth();
         const token = await auth.currentUser.getIdToken();
-        const response = await fetch(`http://localhost:8000/api/blog-posts/${id}`, {
+        const response = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ topic: editedTopic, content: editedContent })
@@ -129,7 +129,7 @@ export default function PostDetail() {
     try {
         const auth = getAuth();
         const token = await auth.currentUser.getIdToken();
-        const res = await fetch(`http://localhost:8000/api/blog-posts/${id}`, {
+        const res = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${id}`, {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` }
         });

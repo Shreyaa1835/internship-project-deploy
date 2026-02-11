@@ -22,7 +22,7 @@ export default function OutlineView({ outline, postId, onCancel }) {
     try {
       const token = await user.getIdToken();
 
-      const response = await fetch(`http://localhost:8000/api/blog-posts/${postId}/generate`, {
+      const response = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${postId}/generate`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,

@@ -39,7 +39,7 @@ export default function BlogPostCard({ post: initialPost }) {
         try {
           const token = await user.getIdToken();
 
-          const response = await fetch(`http://localhost:8000/api/blog-posts/${post.id}`, {
+          const response = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${post.id}`, {
             method: "GET",
             headers: {
               "Authorization": `Bearer ${token}`,

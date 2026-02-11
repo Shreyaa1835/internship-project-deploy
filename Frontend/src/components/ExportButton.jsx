@@ -14,7 +14,7 @@ export default function ExportButton({ postId, content, topic, onClose }) {
       const auth = getAuth();
       const token = await auth.currentUser.getIdToken();
       
-      const res = await fetch(`http://localhost:8000/api/blog-posts/${postId}/export?format=${format}`, {
+      const res = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${postId}/export?format=${format}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 

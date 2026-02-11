@@ -25,7 +25,7 @@ export default function CreatePost() {
         try {
           const token = await user.getIdToken();
           
-          const response = await fetch(`http://localhost:8000/api/blog-posts/${postId}`, {
+          const response = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${postId}`, {
             method: "GET",
             headers: {
               "Authorization": `Bearer ${token}` 
@@ -91,7 +91,7 @@ export default function CreatePost() {
     try {
       const token = await user.getIdToken();
 
-      const response = await fetch("http://localhost:8000/api/blog-posts", {
+      const response = await fetch("https://blog-post-backend-aqmp.onrender.com/api/blog-posts", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

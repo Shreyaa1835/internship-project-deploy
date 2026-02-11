@@ -51,8 +51,8 @@ The server will start at http://localhost:8000
 
 Once the server is running, visit:
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: https://blog-post-backend-aqmp.onrender.com/docs
+- **ReDoc**: https://blog-post-backend-aqmp.onrender.com/redoc
 
 ## Endpoints
 

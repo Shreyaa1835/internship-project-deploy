@@ -39,7 +39,7 @@ export default function SchedulePicker({ postId, onClose, onFinish }) {
     try {
       const auth = getAuth();
       const token = await auth.currentUser.getIdToken();
-      const res = await fetch(`http://localhost:8000/api/blog-posts/${postId}/schedule`, {
+      const res = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts/${postId}/schedule`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ scheduledAt: selectedDate.toISOString() })

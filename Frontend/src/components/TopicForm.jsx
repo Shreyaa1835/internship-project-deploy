@@ -32,7 +32,7 @@ export default function TopicForm() {
 
     try {
       // Call backend API
-      const response = await fetch("http://localhost:8000/api/blog-posts", {
+      const response = await fetch("https://blog-post-backend-aqmp.onrender.com/api/blog-posts", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({

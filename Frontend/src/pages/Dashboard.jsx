@@ -41,7 +41,7 @@ export default function Dashboard() {
         if (!user) return; 
 
         const token = await user.getIdToken();
-        const response = await fetch(`http://localhost:8000/api/blog-posts`, {
+        const response = await fetch(`https://blog-post-backend-aqmp.onrender.com/api/blog-posts`, {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -75,7 +75,7 @@ export default function Dashboard() {
       try {
         const token = await user.getIdToken(); 
         const response = await fetch(
-          `http://localhost:8000/api/blog-posts/search?query=${encodeURIComponent(searchQuery.trim())}`, 
+          `https://blog-post-backend-aqmp.onrender.com/api/blog-posts/search?query=${encodeURIComponent(searchQuery.trim())}`, 
           {
             method: "GET",
             headers: {
