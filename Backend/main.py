@@ -141,24 +141,31 @@ def update_scheduled_date(post_id: int, user_id: str, scheduled_at: str):
 def clean_for_pdf(text: str) -> str:
     if not text:
         return ""
+
     replacements = {
-        "\u2013": "-",
-        "\u2014": "-", 
-        "\u2018": "'", 
-        "\u2019": "'", 
-        "\u201c": '"', 
-        "\u201d": '"', 
-        "\u2022": "*", 
+        "\u2013": "-",   # en dash
+        "\u2014": "-",   # em dash
+        "\u2018": "'",   # left single quote
+        "\u2019": "'",   # right single quote
+        "\u201c": '"',   # left double quote
+        "\u201d": '"',   # right double quote
+        "\u2022": "*",   # bullet
     }
+
     for unicode_char, ascii_char in replacements.items():
         text = text.replace(unicode_char, ascii_char)
+
+    # Ensure compatibility with FPDF (latin-1 only)
     return text.encode("latin-1", "ignore").decode("latin-1")
 
+
 def format_post_content(post, format_type: str):
-    title = post['topic']
-    content = post['content'] or "No content available."
-    
-    if format_type.lower() == "pdf":
+    title = post.get('topic', 'Untitled')
+    content = post.get('content') or "No content available."
+
+    format_type = format_type.lower()
+
+    if format_type == "pdf":
         safe_title = clean_for_pdf(title)
         safe_content = clean_for_pdf(content)
 
@@ -167,24 +174,38 @@ def format_post_content(post, format_type: str):
         pdf.set_font("Arial", 'B', 16)
         pdf.cell(0, 10, safe_title, ln=True, align='C')
         pdf.ln(10)
+
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, safe_content) 
-        
-        pdf_bytes = pdf.output(dest='S')
+        pdf.multi_cell(0, 10, safe_content)
+
+        # ✅ CRITICAL FIX: convert string → bytes
+        pdf_bytes = pdf.output(dest='S').encode('latin-1')
         buffer = io.BytesIO(pdf_bytes)
         buffer.seek(0)
-        return buffer, "application/pdf", f"{safe_title}.pdf"
-    
-    elif format_type.lower() == "txt":
-        return f"TOPIC: {title}\n\n{content}", "text/plain", f"{title}.txt"
 
-    elif format_type.lower() == "markdown":
+        # ✅ Safe filename (no special characters)
+        safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', safe_title)
+
+        return buffer, "application/pdf", f"{safe_filename}.pdf"
+
+    elif format_type == "txt":
+        text_body = f"TOPIC: {title}\n\n{content}"
+        return text_body, "text/plain", f"{title}.txt"
+
+    elif format_type == "markdown":
         markdown_body = f"# {title}\n\n{content}"
         return markdown_body, "text/markdown", f"{title}.md"
-    
-    else: 
-        html = f"<html><body><h1>{title}</h1><p>{content.replace('\n', '<br>')}</p></body></html>"
-        return html, "text/html", f"{title}.html"
+
+    else:
+        html_body = f"""
+        <html>
+            <body>
+                <h1>{title}</h1>
+                <p>{content.replace('\n', '<br>')}</p>
+            </body>
+        </html>
+        """
+        return html_body, "text/html", f"{title}.html"
 # ---------------------------------------------------------
 # 1. STATIC ROUTES 
 # ---------------------------------------------------------
